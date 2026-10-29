@@ -1,6 +1,6 @@
 {
   "name": "stenographers",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Write an edited document back into the Markdown it was read from, keeping the author's bytes: a stenographer per node writes over the node's old slice in the author's style, every node that still means what it meant keeps its bytes, and only typed text is escaped. With a Markdown writer for Provenance, by shape.",
   "type": "module",
   "exports": {
