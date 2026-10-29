@@ -1,30 +1,33 @@
 // The stenographers' write (the studio's notes/markdown-plan.md, "Stenographers" and "Escalation"): a node's new bytes, written over its old transcript in the author's style. A stenographer reads a node as the HTML it means (the schema's document serializer's element), never by a ProseMirror type name, and its old slice re-parsed alone, with the file's definitions after it so a reference resolves as it did in the file. Every node that still means what its old bytes meant keeps them; only typed text is escaped, and only for what it could be misread as. A stenographer that cannot write its node answers null, and its parent writes it: the list for an item, the flow for a list; the last step is the lane change, the node written as raw HTML.
 import { parseMarkdown } from './parse.js';
 import { domOf, means } from './html.js';
+import { list, item } from './list.js';
+import { figure } from './figure.js';
+import { pairDialect, freshDialect } from './dialect.js';
 
 const BLOCKS = new Set(['address', 'article', 'aside', 'blockquote', 'details', 'div', 'dl', 'fieldset', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'main', 'menu', 'nav', 'ol', 'p', 'pre', 'section', 'table', 'ul']);
-const isBlock = (n) => n.nodeType === 1 && BLOCKS.has(n.localName);
-const span = (ctx, from, to) => ctx.src.slice(from, to);
-const start = (n) => n.position.start.offset;
-const end = (n) => n.position.end.offset;
-const sliceOf = (ctx, n) => span(ctx, start(n), end(n));
+export const isBlock = (n) => n.nodeType === 1 && BLOCKS.has(n.localName);
+export const span = (ctx, from, to) => ctx.src.slice(from, to);
+export const start = (n) => n.position.start.offset;
+export const end = (n) => n.position.end.offset;
+export const sliceOf = (ctx, n) => span(ctx, start(n), end(n));
 
 /**
  * A node's new bytes, written over its old slice.
  * @param {Element} el the node as the HTML it means
- * @param {{ text: string, column: number, defs?: string, gfm?: { autolinks?: boolean, tables?: boolean } }} old its old slice, the column the slice's first byte stands at in the file (the lines after the first carry the parent's prefix up to it), the file's definitions and footnote definitions as source, the venue's GFM options
+ * @param {{ text: string, column: number, defs?: string, markdown?: import('./parse.js').Markdown }} old its old slice, the column the slice's first byte stands at in the file (the lines after the first carry the parent's prefix up to it), the file's definitions and footnote definitions as source, the venue's Markdown options
  * @param {{ force?: boolean }} [opts] `force`: no node keeps its bytes for meaning what they meant, every one is written from its style (the identity check's mode)
  * @returns {string | null} null when the node refuses, for its parent to write
  */
 export function writeNode(el, old, { force = false } = {}) {
   const { body, prefixes } = dedent(old.text, old.column);
-  const tree = parseMarkdown(old.defs ? `${body}\n\n${old.defs}` : body, old.gfm);
+  const tree = parseMarkdown(old.defs ? `${body}\n\n${old.defs}` : body, old.markdown);
   let md = tree.children[0];
   if (el.localName === 'li') md = md?.type === 'list' ? md.children[0] : null;
   if (!md || start(md) !== 0) return null;
   el = el.cloneNode(true);
   el.normalize();
-  const out = block(el, md, { src: body, force, defs: old.defs, gfm: old.gfm });
+  const out = block(el, md, { src: body, force, defs: old.defs, markdown: old.markdown });
   return out == null ? null : reindent(out, prefixes, old.column);
 }
 
@@ -54,15 +57,16 @@ function block(el, md, ctx) {
   if ((tag === 'ul' || tag === 'ol') && md.type === 'list') return list(el, md, ctx);
   if (tag === 'li' && md.type === 'listItem') return item(el, md, ctx);
   if (tag === 'pre' && md.type === 'code') return code(el, md, ctx);
+  if (tag === 'figure' && md.type === 'paragraph') return figure(el, md, ctx);
   // A node no stenographer of this lane writes keeps its bytes while it means them, and refuses once it does not.
   return means(el, md) ? sliceOf(ctx, md) : null;
 }
 
 // A textblock's bytes are read back before they are given. Bytes that do not mean the node are written once more with every colon of the touched text escaped (the plain parse reads `:name` as a directive unless a colon follows it, so escaping one colon can make the name before it one), and refused after that.
-function checked(el, ctx, write) {
+export function checked(el, ctx, write) {
   for (const strict of [false, true]) {
     const out = write({ ...ctx, strict });
-    const md = parseMarkdown(ctx.defs ? `${out}\n\n${ctx.defs}` : out, ctx.gfm).children[0];
+    const md = parseMarkdown(ctx.defs ? `${out}\n\n${ctx.defs}` : out, ctx.markdown).children[0];
     if (md && means(el, md)) return out;
   }
   return null;
@@ -75,7 +79,7 @@ function paragraph(el, md, ctx) {
 }
 
 // A space at a textblock's edge, which Markdown strips, written as its character reference so it stays (Enter just before a space leaves one at the new paragraph's start).
-const edges = (s) => s.replace(/^ /, '&#32;').replace(/ $/, '&#32;');
+export const edges = (s) => s.replace(/^ /, '&#32;').replace(/ $/, '&#32;');
 
 function heading(el, md, ctx) {
   const level = Number(el.localName[1]);
@@ -92,67 +96,6 @@ function heading(el, md, ctx) {
     if (level <= 2) return head + content + tail.replace(/[=-]+/, (u) => (level === 1 ? '=' : '-').repeat(u.length));
     return `${'#'.repeat(level)} ${content.replace(/\n/g, ' ')}`;
   });
-}
-
-// Tight or loose, as mdast-util-to-hast decides it: a list is loose when it or any item is spread, an item whose `spread` is unknown when it holds more than one child.
-const looseItem = (item) => (item.spread == null ? item.children.length > 1 : item.spread);
-const looseList = (list) => list.spread || list.children.some(looseItem);
-
-function list(el, md, ctx) {
-  const items = [...el.children].filter((c) => c.localName === 'li');
-  // ponytail: an item inserted or deleted, and a list turned tight or loose, are refused for now (the list's own write, the gaps between items, is the next step), so the flow above writes the list as HTML.
-  if (items.length !== md.children.length) return null;
-  if (looseList(md) !== items.some((li) => [...li.children].some((c) => c.localName === 'p'))) return null;
-  let out = span(ctx, start(md), start(md.children[0]));
-  for (const [i, li] of items.entries()) {
-    const k = md.children[i];
-    const w = writeNode(li, { text: sliceOf(ctx, k), column: k.position.start.column - 1, defs: ctx.defs, gfm: ctx.gfm }, ctx);
-    if (w == null) return null;
-    out += w + span(ctx, end(k), i + 1 < items.length ? start(md.children[i + 1]) : end(md));
-  }
-  return out;
-}
-
-/** An item's content as blocks: a stretch of inline content (a tight item's text) is one paragraph, the whitespace between blocks is the gap's, a task item's checkbox is its marker's. */
-function blocksOf(li) {
-  // `li` is writeNode's copy, so it is taken apart in place.
-  const box = li.classList.contains('task-list-item') && li.querySelector('input[type="checkbox"]');
-  if (box) {
-    const after = box.nextSibling;
-    box.remove();
-    if (after?.nodeType === 3 && after.data.startsWith(' ')) after.data = after.data.slice(1);
-  }
-  const out = [], runs = [];
-  let run = null;
-  for (const n of [...li.childNodes]) {
-    if (isBlock(n)) { run = null; out.push(n); continue; }
-    // Whitespace between blocks is the gap's; whitespace that starts a stretch of text is the text's.
-    if (n.nodeType === 3 && !/\S/.test(n.data) && !run && (!n.nextSibling || isBlock(n.nextSibling))) continue;
-    if (!run) { run = document.createElement('p'); out.push(run); runs.push(run); }
-    run.append(n);
-  }
-  // The line end mdast-util-to-hast puts between a tight item's text and its sublist is the gap's, not the text's.
-  for (const r of runs) {
-    const last = r.lastChild;
-    if (last?.nodeType === 3) last.data = last.data.replace(/\n$/, '');
-    if (last?.nodeType === 3 && !last.data) last.remove();
-  }
-  return out;
-}
-
-function item(el, md, ctx) {
-  const kids = md.children;
-  const parts = blocksOf(el);
-  if (!kids.length) return parts.length ? null : sliceOf(ctx, md);
-  if (parts.length !== kids.length) return null;
-  let out = span(ctx, start(md), start(kids[0]));
-  for (const [i, part] of parts.entries()) {
-    const k = kids[i];
-    const w = writeNode(part, { text: sliceOf(ctx, k), column: k.position.start.column - 1, defs: ctx.defs, gfm: ctx.gfm }, ctx);
-    // A part no stenographer writes changes lane, at the item's content indent so it stays in the item.
-    out += (w ?? part.outerHTML.replace(/\n/g, `\n${' '.repeat(k.position.start.column - 1)}`)) + span(ctx, end(k), i + 1 < kids.length ? start(kids[i + 1]) : end(md));
-  }
-  return out;
 }
 
 // A fenced code block keeps its fence lines and writes its new body; its language, when it changed, is the opening fence's first word. An indented block, or a body with a line that would close the fence, refuses.
@@ -177,7 +120,7 @@ function code(el, md, ctx) {
 const same = (n, o, ctx) => !ctx.force && means(n, o);
 
 /** The bytes of new inline content over the old: the nodes that still mean what they meant keep their bytes, the rest are paired with the old in order and written in their style, or written fresh. */
-function inline(nodes, kids, ctx) {
+export function inline(nodes, kids, ctx) {
   const n = nodes.length, m = kids.length;
   let i = 0;
   while (i < n && i < m && same(nodes[i], kids[i], ctx)) i++;
@@ -194,6 +137,8 @@ function inline(nodes, kids, ctx) {
 const WRAPS = { em: 'emphasis', strong: 'strong', del: 'delete' };
 
 function pair(n, o, ctx) {
+  const notation = pairDialect(n, o, ctx);
+  if (notation !== undefined) return notation;
   if (n.nodeType === 3) return o.type === 'text' ? text(n.data, o, ctx) : fresh(n);
   if (n.nodeType !== 1) return fresh(n);
   const tag = n.localName;
@@ -258,24 +203,26 @@ const opener = (t) => t.replace(/^( {0,3})([#>+-])/, '$1\\$2').replace(/^( {0,3}
 /**
  * A block written with no old bytes (a paragraph Enter made, a block inserted): a paragraph or a heading in Markdown's own syntax, read back before it is given; anything else, or what does not read back, as raw HTML (the lane change).
  * @param {Element} el the block as the HTML it means
- * @param {{ defs?: string, gfm?: object }} [file] the file's definitions and GFM options, for the read-back
+ * @param {{ defs?: string, markdown?: import('./parse.js').Markdown }} [file] the file's definitions and Markdown options, for the read-back
  */
-export function writeFresh(el, { defs, gfm } = {}) {
+export function writeFresh(el, { defs, markdown } = {}) {
   if (el.nodeType === 8) return `<!--${el.data}-->`;
   const tag = el.localName;
   const inner = () => edges(opener([...el.childNodes].map(fresh).join('')));
   const out = tag === 'p' ? inner() : /^h[1-6]$/.test(tag) ? `${'#'.repeat(Number(tag[1]))} ${inner()}` : null;
   if (out) {
-    const md = parseMarkdown(defs ? `${out}\n\n${defs}` : out, gfm).children[0];
+    const md = parseMarkdown(defs ? `${out}\n\n${defs}` : out, markdown).children[0];
     if (md && means(el, md)) return out;
   }
   return el.outerHTML;
 }
 
 /** An inline node written with no old bytes to keep: Markdown's own syntax where it has one, raw HTML where it has none (the lane change). */
-function fresh(n) {
+export function fresh(n) {
   if (n.nodeType === 3) return escape(n.data, false);
   if (n.nodeType !== 1) return '';
+  const notation = freshDialect(n);
+  if (notation !== undefined) return notation;
   const inner = () => [...n.childNodes].map(fresh).join('');
   switch (n.localName) {
     case 'em': return `*${inner()}*`;

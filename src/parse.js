@@ -1,4 +1,4 @@
-// The plain parse (the studio's notes/markdown-plan.md, "The root parser"): BelType's four syntax extensions (frontmatter, math, directive, GFM's parts) and no belt plugin, because it is the only parse whose positions are exact (notes/unified-write-back.md). GFM's parts are registered in the order BelType's own `plugins/gfm.js` registers them, autolink literals and tables off unless asked for, as there.
+// The plain parse (the studio's notes/markdown-plan.md, "The root parser"): BelType's four syntax extensions (frontmatter, math, directive, GFM's parts) and no belt plugin, because it is the only parse whose positions are exact (notes/unified-write-back.md); BelType's notations and figures are found on its tree afterwards, by this package's own code, which keeps every position exact. GFM's parts are registered in the order BelType's own `plugins/gfm.js` registers them, autolink literals and tables off unless asked for, as there.
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { frontmatter } from 'micromark-extension-frontmatter';
 import { frontmatterFromMarkdown } from 'mdast-util-frontmatter';
@@ -16,13 +16,21 @@ import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTableFromMarkdown } from 'mdast-util-gfm-table';
 import { gfmTaskListItem } from 'micromark-extension-gfm-task-list-item';
 import { gfmTaskListItemFromMarkdown } from 'mdast-util-gfm-task-list-item';
+import { dialect } from './dialect.js';
+import { figures } from './figure.js';
 
 /**
- * The mdast of a Markdown text, every node positioned in it.
- * @param {string} text
- * @param {{ autolinks?: boolean, tables?: boolean }} [gfm] the venue's `markdown.gfm` (BelType's manual has both on)
+ * @typedef {{ gfm?: { autolinks?: boolean, tables?: boolean }, mark?: boolean, supersub?: boolean, figure?: boolean }} Markdown
+ *   the venue's `markdown:` options, in core's shape and under core's names: GFM's autolink literals and tables, off unless asked for (BelType's manual has both on); `==mark==`, `~sub~` and `^sup^`, and a titled image alone in its paragraph as a figure, on unless switched off
  */
-export function parseMarkdown(text, { autolinks = false, tables = false } = {}) {
+
+/**
+ * The mdast of a Markdown text, every node positioned in it, with BelType's notations (./dialect.js) and figures (./figure.js) found on it.
+ * @param {string} text
+ * @param {Markdown} [markdown]
+ */
+export function parseMarkdown(text, markdown = {}) {
+  const { autolinks = false, tables = false } = markdown.gfm ?? {};
   const extensions = [frontmatter(), math(), directive()];
   const mdastExtensions = [frontmatterFromMarkdown(), mathFromMarkdown(), directiveFromMarkdown()];
   if (autolinks) { extensions.push(gfmAutolinkLiteral()); mdastExtensions.push(gfmAutolinkLiteralFromMarkdown()); }
@@ -31,5 +39,8 @@ export function parseMarkdown(text, { autolinks = false, tables = false } = {}) 
   if (tables) { extensions.push(gfmTable()); mdastExtensions.push(gfmTableFromMarkdown()); }
   extensions.push(gfmTaskListItem());
   mdastExtensions.push(gfmTaskListItemFromMarkdown());
-  return fromMarkdown(text, { extensions, mdastExtensions });
+  const tree = fromMarkdown(text, { extensions, mdastExtensions });
+  dialect(tree, text, markdown);
+  if (markdown.figure !== false) figures(tree);
+  return tree;
 }

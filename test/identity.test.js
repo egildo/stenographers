@@ -8,7 +8,7 @@ import { parseMarkdown } from '../src/parse.js';
 import { domOf, means } from '../src/html.js';
 import { writeNode } from '../src/write.js';
 
-const gfm = { autolinks: true, tables: true };
+const markdown = { gfm: { autolinks: true, tables: true } };
 const dir = path.resolve(import.meta.dirname, '../fixtures');
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort().map((f) => ({ name: f, text: fs.readFileSync(path.join(dir, f), 'utf8') }));
 const WRITTEN = new Set(['paragraph', 'heading', 'list', 'listItem']);
@@ -29,13 +29,13 @@ const columnOf = (text, offset) => offset - (text.lastIndexOf('\n', offset - 1) 
 const defsOf = (tree, text) => tree.children.filter((n) => n.type === 'definition' || n.type === 'footnoteDefinition').map((n) => text.slice(n.position.start.offset, n.position.end.offset)).join('\n\n');
 
 for (const { name, text } of files) {
-  const tree = parseMarkdown(text, gfm);
+  const tree = parseMarkdown(text, markdown);
   const defs = defsOf(tree, text);
   test(`${name}: every paragraph, heading, list and item written from its style alone is its slice; every other block keeps its bytes`, () => {
     const wrong = [];
     for (const md of nodes(tree)) {
       const slice = text.slice(md.position.start.offset, md.position.end.offset);
-      const out = writeNode(elementOf(md), { text: slice, column: columnOf(text, md.position.start.offset), defs, gfm }, { force: WRITTEN.has(md.type) });
+      const out = writeNode(elementOf(md), { text: slice, column: columnOf(text, md.position.start.offset), defs, markdown }, { force: WRITTEN.has(md.type) });
       if (out !== slice) wrong.push({ type: md.type, line: md.position.start.line, out: out?.slice(0, 80) ?? null });
     }
     assert.deepEqual(wrong, []);
@@ -47,8 +47,8 @@ for (const { name, text } of files) {
       const el = elementOf(md);
       el.append('x');
       el.normalize();
-      const out = writeNode(el, { text: slice, column: 0, defs, gfm });
-      const back = out && parseMarkdown(`${out}\n\n${defs}`, gfm).children[0];
+      const out = writeNode(el, { text: slice, column: 0, defs, markdown });
+      const back = out && parseMarkdown(`${out}\n\n${defs}`, markdown).children[0];
       // Only the `x`, or, after a colon, the colon escaped with it (`:x` would open a text directive), or every colon of the touched text escaped: the read-back rule's second try, measured on `syntax.md`'s `:rocket: :compass:`, where escaping one colon makes the name before it a directive.
       const minimal = out === `${slice}x` || out?.replace(/\\:/g, ':') === `${slice}x`;
       if (!back || !means(el, back) || !minimal) wrong.push({ line: md.position.start.line, end: slice.slice(-30), out: out?.slice(-34) ?? null });

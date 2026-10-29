@@ -7,7 +7,7 @@ const merges = (a, aBytes, b, bBytes) => a.localName === b.localName && /^[uo]l$
 /**
  * @param {{ el: Element, j: number, same: boolean, bytes?: string | null, over?: string | null }[]} blocks the new blocks in order: the HTML each means, the index of the old block it stands for (-1: none), whether it is that block unchanged; `bytes`, the block's bytes as they stand (written as they are); `over`, the bytes a changed block is written over (its old block's by default)
  * @param {{ text: string, spans: [number, number][], from?: number, to?: number }} old the old text, its blocks' spans in it in order, and the stretch of it they lie in (all of it by default)
- * @param {{ defs?: string, gfm?: object }} [file] the file's definitions and GFM options, for the stenographers' re-parse
+ * @param {{ defs?: string, markdown?: import('./parse.js').Markdown }} [file] the file's definitions and Markdown options, for the stenographers' re-parse
  * @returns {{ text: string, spans: [number, number][], report: { kept: number, written: number, fresh: number, deleted: number } }} the stretch's new bytes, and each new block's span in them
  */
 export function writeFlow(blocks, old, file = {}) {

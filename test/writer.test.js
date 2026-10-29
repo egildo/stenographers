@@ -8,14 +8,14 @@ import { parseMarkdown } from '../src/parse.js';
 import { domOf } from '../src/html.js';
 import { markdownWriter, outline, writeRun } from '../src/writer.js';
 
-const gfm = { autolinks: true, tables: true };
+const markdown = { gfm: { autolinks: true, tables: true } };
 const text = fs.readFileSync(path.resolve(import.meta.dirname, '../fixtures/style.md'), 'utf8');
 const encode = (s) => new TextEncoder().encode(s);
 const decode = (b) => new TextDecoder().decode(b);
 const valueOf = (run) => run.blocks.map((b) => [domOf(b).find((n) => n.nodeType === 1).outerHTML, text.slice(b.position.start.offset, b.position.end.offset), true]);
 
 test('the outline: the preamble, then each heading by its path, nested by rank', () => {
-  const { runs } = outline(parseMarkdown(text, gfm), text);
+  const { runs } = outline(parseMarkdown(text, markdown), text);
   const paths = [...runs.keys()];
   assert.equal(paths[0], '');
   assert.equal(paths[1], '/The house style');
@@ -40,13 +40,13 @@ test('locate answers bytes, not string positions', () => {
 });
 
 test('a run written again from its own value, every block unchanged, is its bytes', () => {
-  const { runs } = outline(parseMarkdown(text, gfm), text);
-  for (const run of runs.values()) assert.equal(writeRun(text, run, valueOf(run), { gfm }).text, text.slice(run.from, run.to));
+  const { runs } = outline(parseMarkdown(text, markdown), text);
+  for (const run of runs.values()) assert.equal(writeRun(text, run, valueOf(run), { markdown }).text, text.slice(run.from, run.to));
 });
 
 test('write: one paragraph changed in a run changes only that paragraph', () => {
-  const { document } = markdownWriter({ gfm }).open(encode(text));
-  const { runs } = outline(parseMarkdown(text, gfm), text);
+  const { document } = markdownWriter({ markdown }).open(encode(text));
+  const { runs } = outline(parseMarkdown(text, markdown), text);
   const path = '/The house style';
   const run = runs.get(path);
   const value = valueOf(run).map((entry) => (entry[0].startsWith('<p>') ? [entry[0].replace('</p>', ' Added.</p>'), entry[1], false] : entry));

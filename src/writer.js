@@ -46,7 +46,7 @@ export function outline(tree, text) {
  * @param {string} text the file's text
  * @param {{ from: number, to: number, blocks: object[], heading?: boolean }} run the run in it, from `outline` (`heading`: a section's run, not the preamble)
  * @param {[string, string | null, boolean, (string | null)?, boolean?][]} value
- * @param {{ defs?: string, gfm?: object }} file
+ * @param {{ defs?: string, markdown?: import('./parse.js').Markdown }} file
  * @returns {{ text: string, spans: [number, number][] }} the run's bytes, and each value block's span in them
  */
 export function writeRun(text, run, value, file) {
@@ -85,15 +85,15 @@ const sameKind = (el, md) => {
 const wellFormed = (value) => Array.isArray(value) && value.every((b) => Array.isArray(b) && typeof b[0] === 'string' && (b[1] === null || typeof b[1] === 'string') && typeof b[2] === 'boolean' && (b[3] == null || typeof b[3] === 'string') && (b[4] == null || typeof b[4] === 'boolean'));
 
 /**
- * @param {{ gfm?: { autolinks?: boolean, tables?: boolean }, claims?: (location: string) => boolean }} [options]
+ * @param {{ markdown?: import('./parse.js').Markdown, claims?: (location: string) => boolean }} [options]
  */
-export function markdownWriter({ gfm, claims = (location) => /\.md$/i.test(location) } = {}) {
+export function markdownWriter({ markdown, claims = (location) => /\.md$/i.test(location) } = {}) {
   return {
     claims,
     open(bytes) {
       let text;
       try { text = decoder.decode(bytes); } catch { return { ok: false, reason: 'the file is not UTF-8' }; }
-      const tree = parseMarkdown(text, gfm);
+      const tree = parseMarkdown(text, markdown);
       const { runs, siblings } = outline(tree, text);
       const defs = tree.children.filter((n) => n.type === 'definition' || n.type === 'footnoteDefinition').map((n) => text.slice(n.position.start.offset, n.position.end.offset)).join('\n\n');
       const byte = (i) => encoder.encode(text.slice(0, i)).length;
@@ -107,7 +107,7 @@ export function markdownWriter({ gfm, claims = (location) => /\.md$/i.test(locat
           const run = runs.get(path);
           if (!run) return { ok: false, reason: `no section at ${JSON.stringify(path)}` };
           if (!wellFormed(value)) return { ok: false, reason: 'the value of a section is its blocks, each [html, its bytes at the base or null, unchanged, its prior bytes or null, whether they stand]' };
-          const out = writeRun(text, run, value, { defs, gfm }).text;
+          const out = writeRun(text, run, value, { defs, markdown }).text;
           return { ok: true, edit: { start: byte(run.from), end: byte(run.to), bytes: encoder.encode(out) } };
         },
         // A list along the path changed length when a step with an ordinal names siblings whose count changed.
