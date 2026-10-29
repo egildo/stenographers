@@ -3,6 +3,9 @@ import { parseMarkdown } from './parse.js';
 import { domOf, means } from './html.js';
 import { list, item } from './list.js';
 import { figure } from './figure.js';
+import { table } from './table.js';
+import { quote } from './quote.js';
+import { directive } from './directive.js';
 import { pairDialect, freshDialect } from './dialect.js';
 
 const BLOCKS = new Set(['address', 'article', 'aside', 'blockquote', 'details', 'div', 'dl', 'fieldset', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'main', 'menu', 'nav', 'ol', 'p', 'pre', 'section', 'table', 'ul']);
@@ -58,6 +61,10 @@ function block(el, md, ctx) {
   if (tag === 'li' && md.type === 'listItem') return item(el, md, ctx);
   if (tag === 'pre' && md.type === 'code') return code(el, md, ctx);
   if (tag === 'figure' && md.type === 'paragraph') return figure(el, md, ctx);
+  // A container's writer that refuses leaves it to the rule below: its bytes kept while they mean it.
+  const container = tag === 'table' && md.type === 'table' ? table : tag === 'blockquote' && md.type === 'blockquote' ? quote : tag === 'div' && md.type === 'containerDirective' ? directive : null;
+  const written = container?.(el, md, ctx);
+  if (written != null) return written;
   // A node no stenographer of this lane writes keeps its bytes while it means them, and refuses once it does not.
   return means(el, md) ? sliceOf(ctx, md) : null;
 }
