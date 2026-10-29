@@ -1,5 +1,6 @@
 // The list's stenographers (the studio's notes/markdown-plan.md, "The list item, worked through"): a list over its old items, an item over its old blocks. A list pairs its new items with the old (the common head and tail by meaning, the middle in order when the counts match) and writes each pair over the old slice. An item without a partner is written fresh at the marker and content indent of the item above it (the one below when it is first), numbered one past the one above in an ordered list, the items below left as they are; an old item without a partner is gone with its gap. A list turned tight or loose gets a blank line between its items or loses them, and nothing else of the gaps changes. An item's task box is written over the old box's bytes when its state changed.
-import { isBlock, sliceOf, span, start, end, writeNode, writeFresh, checked } from './write.js';
+import { isBlock, sliceOf, span, start, end, writeNode, writeFresh } from './write.js';
+import { parseMarkdown } from './parse.js';
 import { domOf, uncounted } from './html.js';
 
 // Tight or loose, as mdast-util-to-hast decides it: a list is loose when it or any item is spread, an item whose `spread` is unknown when it holds more than one child.
@@ -51,8 +52,17 @@ export function list(el, md, ctx) {
   // Read back as a whole: a gap inside an item can keep a list loose that was turned tight, and one item cannot be loose at all.
   // ponytail: such a list changes lane; removing the blank lines between an item's own blocks would keep it Markdown.
   out += span(ctx, end(old.at(-1)), end(md));
-  return checked(el, ctx, () => out);
+  const back = parseMarkdown(ctx.defs ? `${out}\n\n${ctx.defs}` : out, ctx.markdown).children[0];
+  const dom = back && domOf(back).find((d) => d.nodeType === 1);
+  return dom && bare(dom).isEqualNode(bare(el)) ? out : null;
 }
+
+// A list without the whitespace between its items, which an editor's serializer need not write as mdast-util-to-hast does (a line end after each item).
+const bare = (list) => {
+  const copy = uncounted(list).cloneNode(true);
+  for (const c of [...copy.childNodes]) if (c.nodeType === 3 && !/\S/.test(c.data)) c.remove();
+  return copy;
+};
 
 // An item with no old bytes: its neighbour's marker, its blocks written fresh (a tight item's text is the one paragraph), the lines after the first at the content indent.
 function freshItem(li, marker, loose, ctx) {

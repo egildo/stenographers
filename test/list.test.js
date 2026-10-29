@@ -146,6 +146,14 @@ test('an inserted item with a line break stays tight: the break is `\\` and a li
   assert.equal(write('8. a\n9. b', (el) => insert(el, 2, 'c<br>\nd')), '8. a\n9. b\n10. c\\\n    d');
 });
 
+test('an item inserted as an editor serializes it, with no line end beside it, is written as Markdown', () => {
+  const text = '- a\n- [ ] b', el = domOf(parseMarkdown(text, markdown).children[0]).find((n) => n.nodeType === 1);
+  const li = document.createElement('li');
+  li.textContent = 'new';
+  lisOf(el)[0].after(li);
+  assert.equal(writeNode(el, { text, column: 0, defs: '', markdown }), '- a\n- new\n- [ ] b');
+});
+
 test('a task inserted into a task list is written with its box', () => {
   const li = () => { const l = document.createElement('li'); l.className = 'task-list-item'; l.innerHTML = '<input type="checkbox" disabled=""> new'; return l; };
   assert.equal(write('- [ ] a\n- [x] b', (el) => { lisOf(el)[0].after('\n', li()); }), '- [ ] a\n- [ ] new\n- [x] b');
