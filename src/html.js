@@ -35,10 +35,31 @@ export function domOf(mdast) {
   return [...t.content.childNodes];
 }
 
-/** Whether a DOM node is what an mdast node means in HTML (the test that lets an unchanged node keep its bytes). */
+/** Whether a DOM node is what an mdast node means in HTML (the test that lets an unchanged node keep its bytes), the whitespace between its blocks aside (`bare`). */
 export function means(node, mdast) {
   const dom = domOf(mdast).filter((n) => n.nodeType !== 3 || /\S/.test(n.data) || n.data === node.data);
-  return dom.length === 1 && uncounted(dom[0]).isEqualNode(uncounted(node));
+  return dom.length === 1 && bare(dom[0]).isEqualNode(bare(node));
+}
+
+// The elements whose neighbours' whitespace is layout, not text: blocks and the parts of lists and tables.
+const STRUCTURE = new Set(['address', 'article', 'aside', 'blockquote', 'details', 'div', 'dl', 'dd', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'li', 'main', 'menu', 'nav', 'ol', 'p', 'pre', 'section', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'caption', 'ul']);
+const layout = (n) => !n || (n.nodeType === 1 && STRUCTURE.has(n.localName));
+// Layout whitespace is HTML's own (space, tab, line ends); a no-break space or an em space is text.
+const LAYOUT = /^[ \t\n\r\f]+$/;
+
+/** A copy of an element, its count left out (`uncounted`), without the whitespace between its blocks, which mdast-util-to-hast writes as line ends and an editor's serializer need not write at all: what a container's read-back compares. Whitespace with no element beside it (a cell's or a paragraph's whole text) is kept: it is content. */
+export function bare(el) {
+  const copy = uncounted(el).cloneNode(true);
+  copy.normalize?.();
+  // A preformatted block's whitespace is its text.
+  (function walk(p) {
+    if (p.localName === 'pre') return;
+    for (const c of [...p.childNodes]) {
+      if (c.nodeType === 3 && LAYOUT.test(c.data) && STRUCTURE.has(p.localName) && (c.previousSibling || c.nextSibling) && layout(c.previousSibling) && layout(c.nextSibling)) c.remove();
+      else if (c.nodeType === 1) walk(c);
+    }
+  })(copy);
+  return copy;
 }
 
 // A footnote reference's number and id are the document's count, not the reference's meaning: a paragraph read alone counts from one.
