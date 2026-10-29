@@ -219,7 +219,8 @@ export function writeFresh(el, { defs, markdown } = {}) {
 
 /** An inline node written with no old bytes to keep: Markdown's own syntax where it has one, raw HTML where it has none (the lane change). */
 export function fresh(n) {
-  if (n.nodeType === 3) return escape(n.data, false);
+  // The line end mdast-util-to-hast puts after a `br` is the break's own, which `\` and a line end already write.
+  if (n.nodeType === 3) return escape(n.previousSibling?.localName === 'br' ? n.data.replace(/^\n/, '') : n.data, false);
   if (n.nodeType !== 1) return '';
   const notation = freshDialect(n);
   if (notation !== undefined) return notation;

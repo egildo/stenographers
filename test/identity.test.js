@@ -45,12 +45,14 @@ for (const { name, text } of files) {
     for (const md of tree.children.filter((n) => n.type === 'paragraph' || n.type === 'heading')) {
       const slice = text.slice(md.position.start.offset, md.position.end.offset);
       const el = elementOf(md);
-      el.append('x');
+      // A figure's key is typed at the end of its caption, the text inside the title's quotes: one typed after the caption is outside the figure's notation, and refuses.
+      const figure = el.localName === 'figure';
+      (figure ? el.querySelector('figcaption') : el).append('x');
       el.normalize();
       const out = writeNode(el, { text: slice, column: 0, defs, markdown });
       const back = out && parseMarkdown(`${out}\n\n${defs}`, markdown).children[0];
-      // Only the `x`, or, after a colon, the colon escaped with it (`:x` would open a text directive), or every colon of the touched text escaped: the read-back rule's second try, measured on `syntax.md`'s `:rocket: :compass:`, where escaping one colon makes the name before it a directive.
-      const minimal = out === `${slice}x` || out?.replace(/\\:/g, ':') === `${slice}x`;
+      // Only the `x`, or, after a colon, the colon escaped with it (`:x` would open a text directive), or every colon of the touched text escaped: the read-back rule's second try, measured on `syntax.md`'s `:rocket: :compass:`, where escaping one colon makes the name before it a directive. In a figure, the `x` anywhere (before the caption's `{#id}`).
+      const minimal = figure ? out?.length === slice.length + 1 && [...out].some((c, i) => c === 'x' && out.slice(0, i) + out.slice(i + 1) === slice) : out === `${slice}x` || out?.replace(/\\:/g, ':') === `${slice}x`;
       if (!back || !means(el, back) || !minimal) wrong.push({ line: md.position.start.line, end: slice.slice(-30), out: out?.slice(-34) ?? null });
     }
     assert.deepEqual(wrong, []);
