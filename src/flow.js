@@ -18,7 +18,9 @@ export function writeFlow(blocks, old, file = {}) {
   const slice = (k) => text.slice(...spans[k]);
   // The bytes between old block k-1 and old block k; the lead holds what is before the first.
   const gap = (k) => (k === 0 ? '' : text.slice(spans[k - 1][1], spans[k][0]));
-  const held = (a, b) => { let kept = ''; for (let k = a + 1; k < b; k++) if (!used.has(k) && /\S/.test(gap(k))) kept += gap(k); return kept; };
+  // A held gap brings its own blank lines either side; where another gap follows it, its trailing ones give way, so a removed block leaves no blank line of its own behind.
+  const join = (h, g) => (h && /^\s/.test(g) ? h.trimEnd() + g : h + g);
+  const held = (a, b) => { let kept = ''; for (let k = a + 1; k < b; k++) if (!used.has(k) && /\S/.test(gap(k))) kept = join(kept, gap(k)); return kept; };
   let out = text.slice(from, spans[0]?.[0] ?? to);
   const next = [];
   let prev = -1, last = '';
@@ -29,14 +31,14 @@ export function writeFlow(blocks, old, file = {}) {
     else if (j < 0 && over == null) { bytes = writeFresh(el, file); report.fresh++; }
     else { bytes = writeNode(el, { text: over ?? slice(j), column: 0, ...file }) ?? el.outerHTML; report.written++; }
     const adjacent = i > 0 && j >= 0 && j === prev + 1 && blocks[i - 1].j === prev;
-    let sep = i === 0 ? (j >= 0 ? held(-1, j) : '') : j > prev ? held(prev, j) + gap(j) || '\n\n' : '\n\n';
+    let sep = i === 0 ? (j >= 0 ? held(-1, j) : '') : j > prev ? join(held(prev, j), gap(j)) || '\n\n' : '\n\n';
     if (i > 0 && !adjacent && !/\S/.test(sep) && merges(blocks[i - 1].el, last, el, bytes)) sep = '\n\n<!-- -->\n\n';
     out += sep + bytes;
     last = bytes;
     next.push([out.length - bytes.length, out.length]);
     if (j >= 0) prev = j;
   }
-  out += held(prev, spans.length) + (spans.length ? text.slice(spans.at(-1)[1], to) : '');
+  out += join(held(prev, spans.length), spans.length ? text.slice(spans.at(-1)[1], to) : '');
   // A stretch that had no blocks has no gap after them: the new ones are separated from what follows.
   if (!spans.length && blocks.length) out += to < text.length ? '\n\n' : '\n';
   report.deleted = spans.length - used.size;
