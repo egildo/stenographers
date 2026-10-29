@@ -2,6 +2,12 @@
 
 Write an edited document back into the Markdown it was read from, keeping the author's bytes. A *stenographer* is the writer of one kind of node with the old transcript in hand: it writes the node over its old slice in the author's style (the bullet character, the emphasis character, the indent, the fence), every node that still means what it meant keeps its bytes, and only typed text is escaped, for what its position could misread. It is not a serializer: `mdast-util-to-markdown` rewrites a document in its own style (measured on BelType's manual: 14.3 percent of the lines changed with the defaults), and a stenographer rewrites nothing it was not asked to.
 
+## Install
+
+```sh
+npm install stenographers
+```
+
 ## What it is made of
 
 Five entries (`exports`, no index):
