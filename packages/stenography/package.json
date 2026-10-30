@@ -1,0 +1,24 @@
+{
+  "name": "@stenographers/stenography",
+  "version": "0.0.0",
+  "description": "The stenographer contract: its specification, its types, and the conformance suite every member runs.",
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./run": { "types": "./dist/run.d.ts", "import": "./dist/run.js" }
+  },
+  "files": ["dist", "spec.md", "README.md", "LICENSE"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "tsc && node --test test/*.test.ts",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
+  },
+  "repository": { "type": "git", "url": "https://codeberg.org/egildo/stenographers.git", "directory": "packages/stenography" },
+  "author": "Egildo Tagliareni",
+  "license": "MIT"
+}
