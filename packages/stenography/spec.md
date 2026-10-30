@@ -1,6 +1,6 @@
 # Stenography
 
-**Draft, unreleased (0.0.0).** The contract a stenographer meets. The reasoning and the prior art behind each
+**0.1.0.** The contract a stenographer meets. The reasoning and the prior art behind each
 rule are in 0km's `proposals/stenography-contract.md`.
 
 A stenographer writes an edited value back over its old bytes, in the author's style, and touches nothing else.
@@ -85,3 +85,7 @@ write it in another notation the format allows; each is conformant while the law
 This specification's version is the package's. A *normative* change alters what conformance means: a minor
 version when it only adds, a major one when it breaks. An *informative* change is a patch. The changelog sorts
 every change into one of the two.
+
+## Changelog
+
+- 0.1.0: the first release.

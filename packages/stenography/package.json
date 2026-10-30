@@ -1,6 +1,6 @@
 {
   "name": "@stenographers/stenography",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "The stenographer contract: its specification, its types, and the conformance suite every member runs.",
   "type": "module",
   "exports": {
