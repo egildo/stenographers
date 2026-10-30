@@ -27,8 +27,6 @@ run({
   corpus: fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort().map((f) => fs.readFileSync(path.join(dir, f))),
   read: sections,
   // A section is equal to another when its blocks mean the same HTML, whatever bytes they carry.
-  // Known: refusals carry no code yet, and a wrong-typed value or path is refused instead of thrown.
-  known: { refusal: 'no codes yet; wrong types are refused, not thrown as a TypeError' },
   equal: (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => x[0] === b[i][0]),
   edits(bytes) {
     const s = sections(bytes);

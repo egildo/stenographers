@@ -1,4 +1,4 @@
-// Provenance's Markdown writer (the studio's notes/markdown-plan.md, "Saving through Provenance"): the editing half of a format plug-in, in Provenance's `Writer` shape and by shape only (nothing here imports Provenance). A path is a JSON Pointer over the heading outline: each step a heading's plain text, `~0` `~1` `~2` escaping `~` `/` `@`, a repeated sibling heading's step suffixed `@n`; the empty path is the preamble. A path addresses a section's own run: its heading line and the blocks after it, up to the next heading of any rank, so no two paths share a byte. The value is the run's blocks, each its HTML, the bytes it had at the base and whether it is unchanged (`writeRun`); the writer writes them with the stenographers over the run's bytes in the version it opened, a block finding its old self by those bytes. Only `set`: every edit is a new value for a run, structural ones included (a heading deleted is its run without it, a section deleted its run set to nothing). Bytes are counted here and nowhere else: the writer decodes UTF-8, works in string positions, and answers in byte positions.
+// Provenance's Markdown writer (the studio's notes/markdown-plan.md, "Saving through Provenance"): the editing half of a format plug-in, in Provenance's `Writer` shape and by shape only (nothing here imports Provenance). A path is a JSON Pointer over the heading outline: each step a heading's plain text, `~0` `~1` escaping `~` `/` as RFC 6901 does, a repeated sibling heading's step suffixed `@n`, and a heading whose own text ends in `@` and digits suffixed `@1` even when first, so a step's last `@n` is always its ordinal; the empty path is the preamble. A path addresses a section's own run: its heading line and the blocks after it, up to the next heading of any rank, so no two paths share a byte. The value is the run's blocks, each its HTML, the bytes it had at the base and whether it is unchanged (`writeRun`); the writer writes them with the stenographers over the run's bytes in the version it opened, a block finding its old self by those bytes. Only `set`: every edit is a new value for a run, structural ones included (a heading deleted is its run without it, a section deleted its run set to nothing). Bytes are counted here and nowhere else: the writer decodes UTF-8, works in string positions, and answers in byte positions.
 import { parseMarkdown } from './parse.js';
 import { writeFlow } from './flow.js';
 
@@ -9,8 +9,8 @@ const GAPS = new Set(['definition', 'footnoteDefinition', 'yaml']);
 const gap = (n) => GAPS.has(n.type) || (n.type === 'html' && /^\s*<!--[\s\S]*?-->\s*$/.test(n.value));
 
 const plain = (node) => ('value' in node && typeof node.value === 'string' ? node.value : (node.children ?? []).map(plain).join(''));
-/** A heading's step: its plain text, whitespace collapsed, escaped. */
-export const step = (text) => text.replace(/\s+/g, ' ').trim().replace(/~/g, '~0').replace(/\//g, '~1').replace(/@/g, '~2');
+/** A heading's step: its plain text, whitespace collapsed, escaped as RFC 6901 escapes a step. */
+export const step = (text) => text.replace(/\s+/g, ' ').trim().replace(/~/g, '~0').replace(/\//g, '~1');
 
 /**
  * The runs of a Markdown text, by path, in order: the preamble (after any frontmatter) and each top-level heading's run. Nesting follows the ranks as BelType's sectioning reads them: a heading is the child of the nearest earlier heading of a lower rank.
@@ -33,7 +33,7 @@ export function outline(tree, text) {
     const key = `${parent}\0${name}`;
     const n = (siblings.get(key) ?? 0) + 1;
     siblings.set(key, n);
-    const own = n > 1 ? `${name}@${n}` : name;
+    const own = n > 1 || /@\d+$/.test(name) ? `${name}@${n}` : name;
     stack.push({ depth: h.depth, step: own });
     const from = h.position.start.offset, to = headings[i + 1]?.position.start.offset ?? text.length;
     runs.set(`${parent}/${own}`, { from, to, blocks: blocksIn(from, to), heading: true });
@@ -82,6 +82,13 @@ const sameKind = (el, md) => {
   if (md.type === 'list') return el.localName === (md.ordered ? 'ol' : 'ul');
   return KIND[md.type] === el.localName;
 };
+// Stenography's refusal rule: a wrong-typed path or value is the caller's bug and throws; a data problem is a refusal with its shared code.
+const isEditData = (v) => v === null || ['string', 'number', 'bigint', 'boolean'].includes(typeof v) || (Array.isArray(v) && v.every(isEditData)) || (v instanceof Map && [...v].every(([k, x]) => typeof k === 'string' && isEditData(x)));
+const pointer = (path) => {
+  if (typeof path !== 'string') throw new TypeError(`a path is a string, not ${typeof path}`);
+  return path === '' || (path.startsWith('/') && !/~(?![01])/.test(path));
+};
+const refuse = (code, reason) => ({ ok: false, code, reason });
 const wellFormed = (value) => Array.isArray(value) && value.every((b) => Array.isArray(b) && typeof b[0] === 'string' && (b[1] === null || typeof b[1] === 'string') && typeof b[2] === 'boolean' && (b[3] == null || typeof b[3] === 'string') && (b[4] == null || typeof b[4] === 'boolean'));
 
 /**
@@ -92,7 +99,7 @@ export function markdownWriter({ markdown, claims = (location) => /\.md$/i.test(
     claims,
     open(bytes) {
       let text;
-      try { text = decoder.decode(bytes); } catch { return { ok: false, reason: 'the file is not UTF-8' }; }
+      try { text = decoder.decode(bytes); } catch { return refuse('open-unreadable', 'the file is not UTF-8'); }
       const tree = parseMarkdown(text, markdown);
       const { runs, siblings } = outline(tree, text);
       const defs = tree.children.filter((n) => n.type === 'definition' || n.type === 'footnoteDefinition').map((n) => text.slice(n.position.start.offset, n.position.end.offset)).join('\n\n');
@@ -100,13 +107,16 @@ export function markdownWriter({ markdown, claims = (location) => /\.md$/i.test(
       const opened = {
         siblings,
         locate(path) {
+          if (!pointer(path)) return refuse('path-malformed', `${JSON.stringify(path)} is not a JSON Pointer`);
           const run = runs.get(path);
-          return run ? { ok: true, start: byte(run.from), end: byte(run.to) } : { ok: false, reason: `no section at ${JSON.stringify(path)}` };
+          return run ? { ok: true, start: byte(run.from), end: byte(run.to) } : refuse('edit-target-absent', `no section at ${JSON.stringify(path)}`);
         },
         write(path, value) {
+          if (!pointer(path)) return refuse('path-malformed', `${JSON.stringify(path)} is not a JSON Pointer`);
+          if (!isEditData(value)) throw new TypeError('a value is EditData: a scalar, an array or a Map, never a plain object');
           const run = runs.get(path);
-          if (!run) return { ok: false, reason: `no section at ${JSON.stringify(path)}` };
-          if (!wellFormed(value)) return { ok: false, reason: 'the value of a section is its blocks, each [html, its bytes at the base or null, unchanged, its prior bytes or null, whether they stand]' };
+          if (!run) return refuse('edit-target-absent', `no section at ${JSON.stringify(path)}`);
+          if (!wellFormed(value)) return refuse('edit-unrepresentable', 'the value of a section is its blocks, each [html, its bytes at the base or null, unchanged, its prior bytes or null, whether they stand]');
           const out = writeRun(text, run, value, { defs, markdown }).text;
           return { ok: true, edit: { start: byte(run.from), end: byte(run.to), bytes: encoder.encode(out) } };
         },

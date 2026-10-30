@@ -26,10 +26,19 @@ test('the outline: the preamble, then each heading by its path, nested by rank',
   assert.equal(spans.at(-1)[1], text.length);
 });
 
-test('a step escapes ~, / and @, and a repeated sibling heading takes an ordinal', () => {
+test('a step escapes ~ and / as RFC 6901 does, and a repeated sibling heading takes an ordinal', () => {
   const md = '# A/B ~ c@d\n\n## Same\n\none\n\n## Same\n\ntwo\n';
   const paths = [...outline(parseMarkdown(md), md).runs.keys()];
-  assert.deepEqual(paths, ['', '/A~1B ~0 c~2d', '/A~1B ~0 c~2d/Same', '/A~1B ~0 c~2d/Same@2']);
+  assert.deepEqual(paths, ['', '/A~1B ~0 c@d', '/A~1B ~0 c@d/Same', '/A~1B ~0 c@d/Same@2']);
+});
+
+test('a heading whose text ends in @ and digits always takes its ordinal, so the last @n is never its text', () => {
+  const md = '# Note@2\n\na\n\n# Note\n\nb\n\n# Note\n\nc\n';
+  const paths = [...outline(parseMarkdown(md), md).runs.keys()];
+  assert.deepEqual(paths, ['', '/Note@2@1', '/Note', '/Note@2']);
+  const { document } = markdownWriter().open(encode(md));
+  assert.equal(decode(encode(md).slice(document.locate('/Note@2').start, document.locate('/Note@2').end)), '# Note\n\nc\n');
+  assert.equal(document.locate('/Note@2@1').ok, true);
 });
 
 test('locate answers bytes, not string positions', () => {
