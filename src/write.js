@@ -62,7 +62,7 @@ function block(el, md, ctx) {
   if (tag === 'pre' && md.type === 'code') return code(el, md, ctx);
   if (tag === 'figure' && md.type === 'paragraph') return figure(el, md, ctx);
   // A container's writer that refuses leaves it to the rule below: its bytes kept while they mean it.
-  const container = tag === 'table' && md.type === 'table' ? table : tag === 'blockquote' && md.type === 'blockquote' ? quote : tag === 'div' && md.type === 'containerDirective' ? directive : null;
+  const container = tag === 'table' && md.type === 'table' ? table : tag === 'blockquote' && md.type === 'blockquote' ? quote : md.type === 'containerDirective' ? directive : null;
   const written = container?.(el, md, ctx);
   if (written != null) return written;
   // A node no stenographer of this lane writes keeps its bytes while it means them, and refuses once it does not.

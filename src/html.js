@@ -19,13 +19,22 @@ export function htmlOf(node) {
   return VOID.has(node.tagName) ? `<${node.tagName}${attrs}>` : `<${node.tagName}${attrs}>${inner}</${node.tagName}>`;
 }
 
+// A container directive as to-hast draws an unknown node (its element from `data`, its children), with core's title paragraph first when ./directive.js found one.
+function containerDirective(state, node) {
+  const children = state.all(node);
+  if (node.data?.directiveTitle != null) children.unshift({ type: 'element', tagName: 'p', properties: { className: ['directive-title'] }, children: [{ type: 'text', value: node.data.directiveTitle }] });
+  const el = { type: 'element', tagName: 'div', properties: {}, children };
+  state.patch(node, el);
+  return state.applyData(node, el);
+}
+
 /** The hast of an mdast tree. A text directive has no HTML of its own here (BelType's directive handlers give it one; the plan's round 3), so it is a `span`: inline, it stays in its paragraph, where to-hast's default would make it a `div` the browser closes the paragraph for. */
 export function hastOf(mdast) {
   (function inline(node) {
     if (node.type === 'textDirective') node.data = { ...node.data, hName: node.data?.hName ?? 'span' };
     node.children?.forEach(inline);
   })(mdast);
-  return toHast(mdast, { allowDangerousHtml: true });
+  return toHast(mdast, { allowDangerousHtml: true, handlers: { containerDirective } });
 }
 
 /** The DOM nodes an mdast node stands for in HTML. */

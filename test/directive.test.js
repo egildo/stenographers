@@ -98,7 +98,7 @@ test('every container directive of the manual: a word in its first paragraph wri
           const rel = (o) => o - node.position.start.offset;
           const el = domOf(node).find((n) => n.nodeType === 1);
           const labelled = node.children[0]?.data?.directiveLabel ? 1 : 0;
-          const para = el.children[node.children.indexOf(first)];
+          const para = el.children[node.children.indexOf(first) + (node.data.directiveTitle != null ? 1 : 0)];
           para.append(' word');
           const out = writeNode(el, { text: slice, column: 0, defs: '', markdown });
           assert.notEqual(out, null, file);
@@ -117,4 +117,46 @@ test('every container directive of the manual: a word in its first paragraph wri
     visit(tree);
   }
   assert.ok(count >= 25, `${count} directives`);
+});
+
+test('read as core renders: a built-in its tag, class and title; any other name its own class; the author attributes over the class', () => {
+  const html = (t, m = markdown) => domOf(parseMarkdown(t, m).children[0]).find((n) => n.nodeType === 1).outerHTML;
+  assert.equal(html(':::tip\nBody\n:::'), '<div class="alert alert-tip"><p class="directive-title">Tip</p><p>Body</p></div>');
+  assert.equal(html(':::info{title="Why" #w}\nBody\n:::'), '<div class="alert alert-info" id="w"><p class="directive-title">Why</p><p>Body</p></div>');
+  assert.equal(html(':::aside\nBody\n:::'), '<aside class="sidebar"><p>Body</p></aside>');
+  assert.equal(html(':::note{title="x" .a}\nBody\n:::'), '<div class="a" title="x"><p>Body</p></div>');
+  assert.equal(html(':::box\nBody\n:::', { ...markdown, directives: { box: { tag: 'section', className: 'box', defaultTitle: 'Box' } } }), '<section class="box"><p class="directive-title">Box</p><p>Body</p></section>');
+});
+
+const title = (el) => el.querySelector('.directive-title');
+test('a title edited is written inside its quotes, the rest of the line kept', () => {
+  assert.equal(write(':::info{title="Run behaviour"  #r}\nBody\n:::', (el) => title(el).append(' too')), ':::info{title="Run behaviour too"  #r}\nBody\n:::');
+  assert.equal(write(":::info{title='It'}\nBody\n:::", (el) => title(el).append("'s")), ":::info{title='It&#39;s'}\nBody\n:::");
+  assert.equal(write(':::info{title="A"}\nBody\n:::', (el) => title(el).append(' "B" &amp; C')), ':::info{title="A &quot;B&quot; &amp;amp; C"}\nBody\n:::');
+  assert.equal(write(':::info{title=Short}\nBody\n:::', (el) => title(el).append(' no more')), ':::info{title="Short no more"}\nBody\n:::');
+});
+
+test('a default title edited becomes the attribute; one deleted or emptied takes the attribute away and the default comes back', () => {
+  assert.equal(write(':::tip\nBody\n:::', (el) => title(el).append('!')), ':::tip{title="Tip!"}\nBody\n:::');
+  assert.equal(write(':::tip[L]\nBody\n:::', (el) => title(el).append('!')), ':::tip[L]{title="Tip!"}\nBody\n:::');
+  assert.equal(write(':::tip{.x}\nBody\n:::', (el) => title(el).append('!')), ':::tip{.x title="Tip!"}\nBody\n:::');
+  assert.equal(write(':::warning{title="Unverified"}\nBody\n:::', (el) => title(el).remove()), ':::warning\nBody\n:::');
+  assert.equal(write(':::warning{#w title="Unverified"}\nBody\n:::', (el) => { title(el).textContent = ''; }), ':::warning{#w}\nBody\n:::');
+  assert.equal(write(':::tip\nBody\n:::', (el) => title(el).remove()), ':::tip\nBody\n:::');
+});
+
+test('a title holding markup refuses; the content after it is written as before', () => {
+  assert.equal(attempt(':::tip\nBody\n:::', (el) => { title(el).innerHTML = '<em>Tip</em>'; }).out, null);
+  assert.equal(write(':::tip\nBody\n:::', (el) => el.lastElementChild.append('!')), ':::tip\nBody!\n:::');
+  assert.equal(write(':::tip[Lab]\nBody\n:::', (el) => el.querySelectorAll('p')[1].append('!')), ':::tip[Lab!]\nBody\n:::');
+});
+
+test('the other attributes: kept while they are, one changed or added or removed alone', () => {
+  const text = ':::note{#a  .c   k="v"}\nBody\n:::';
+  assert.equal(write(text, (el) => el.setAttribute('k', 'w')), ':::note{#a  .c   k="w"}\nBody\n:::');
+  assert.equal(write(text, (el) => el.setAttribute('id', 'b')), ':::note{#b  .c   k="v"}\nBody\n:::');
+  assert.equal(write(text, (el) => el.removeAttribute('k')), ':::note{#a  .c}\nBody\n:::');
+  assert.equal(write(text, (el) => el.setAttribute('lang', 'it')), ':::note{#a  .c   k="v" lang="it"}\nBody\n:::');
+  assert.equal(write(':::note\nBody\n:::', (el) => el.setAttribute('lang', 'it')), ':::note{lang="it"}\nBody\n:::');
+  assert.equal(write(':::tip\nBody\n:::', (el) => el.setAttribute('class', 'mine')), ':::tip{.mine}\nBody\n:::');
 });
