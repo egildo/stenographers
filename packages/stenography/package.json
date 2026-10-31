@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./check": { "types": "./dist/check.d.ts", "import": "./dist/check.js" },
     "./run": { "types": "./dist/run.d.ts", "import": "./dist/run.js" }
   },
   "files": ["dist", "spec.md", "README.md", "LICENSE"],

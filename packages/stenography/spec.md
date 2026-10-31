@@ -71,7 +71,9 @@ write it in another notation the format allows; each is conformant while the law
 
 ## The suite
 
-`run(host)` from `@stenographers/stenography/run` registers one `node:test` test per law. A host is:
+`run(host)` from `@stenographers/stenography/run` registers one `node:test` test per law. A member on another
+test runner calls `check(host)` from `@stenographers/stenography/check`, which answers one finding per law (its
+failures, or the reason it is skipped) and registers nothing. A host is:
 
 - `writer`, and the `features` it declares;
 - `corpus`: documents `open` must take;
