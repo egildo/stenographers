@@ -86,6 +86,52 @@ test("declared features are checked against the shape", () => {
   assert.deepEqual(f.find(x => x.law === "shape")!.failures, ["add: declared but absent"]);
 });
 
+// A format whose address is its value, as a Markdown section is named by its heading: one word a line, `/word`.
+const wordsWriter: Writer = {
+  claims: (location) => location.endsWith(".words"),
+  open(bytes) {
+    let text: string;
+    try { text = dec.decode(bytes); } catch { return no("open-unreadable", "not UTF-8"); }
+    const target = (path: string) => {
+      if (typeof path !== "string") throw new TypeError("a path is a string");
+      if (steps(path) === undefined) return no("path-malformed", `${path} is not a pointer`);
+      const words = text.split("\n");
+      const i = words.findIndex(w => w && `/${w}` === path);
+      if (i < 0) return no("edit-target-absent", `no ${path}`);
+      const start = enc.encode(words.slice(0, i).map(w => w + "\n").join("")).length;
+      return { start, end: start + enc.encode(words[i]!).length };
+    };
+    return {
+      ok: true,
+      document: {
+        locate(path) { const t = target(path); return "ok" in t ? t : { ok: true, ...t }; },
+        write(path, value) {
+          if (typeof value !== "string") throw new TypeError("a value is a string");
+          const t = target(path);
+          if ("ok" in t) return t;
+          if (!/^\w+$/.test(value)) return no("edit-unrepresentable", "a value is one word");
+          return { ok: true, edit: { ...t, bytes: enc.encode(value) } };
+        },
+      },
+    };
+  },
+};
+const words = (named: boolean): Host => ({
+  writer: wordsWriter,
+  features: [],
+  corpus: [enc.encode("Ada\nBruno\n")],
+  read(bytes) {
+    const ws = dec.decode(bytes).split("\n").filter(Boolean);
+    return { paths: ws.map(w => `/${w}`), at: (p: string): EditData | undefined => ws.find(w => `/${w}` === p) };
+  },
+  edits: () => [{ path: "/Ada", value: "Carla", ...(named ? { at: "/Carla" } : {}) }],
+});
+
+test("a write that moves its path reads back where the host names", () => {
+  for (const f of check(words(true))) assert.deepEqual(f.failures, [], f.law);
+  assert.deepEqual(check(words(false)).find(x => x.law === "read-back")!.failures, ["document 0: /Ada does not read back as written"]);
+});
+
 test("RFC 6901 syntax: steps, parent, below", () => {
   assert.deepEqual(steps("/a~1b/c~0d"), ["a/b", "c~d"]);
   assert.equal(steps("a"), undefined);

@@ -15,8 +15,8 @@ export interface Host {
   corpus: readonly Uint8Array[];
   /** The values in a document, by path: what the laws read with. `undefined` when the bytes do not read. */
   read(bytes: Uint8Array): { paths: readonly string[]; at(path: string): EditData | undefined } | undefined;
-  /** Writes that must succeed in a document. */
-  edits(bytes: Uint8Array): readonly { path: string; value: EditData }[];
+  /** Writes that must succeed in a document; `at` names the path the value reads back at when the write moves it (default `path`). */
+  edits(bytes: Uint8Array): readonly { path: string; value: EditData; at?: string }[];
   /** The member's meaning; default structural. */
   equal?(a: EditData, b: EditData): boolean;
   /** Bytes `open` must refuse as `open-unreadable`; default invalid UTF-8. */
@@ -94,8 +94,8 @@ export function check(host: Host): Finding[] {
       if (!wellFormed(r.edit, bytes.length)) return fail("read-back", `${at}: the splice for ${e.path} lies outside the bytes`);
       splices.push({ path: e.path, edit: r.edit });
       const after = host.read(apply(bytes, [r.edit]));
-      const read = after?.at(e.path);
-      if (read === undefined || !equal(read, e.value)) fail("read-back", `${at}: ${e.path} does not read back as written`);
+      const read = after?.at(e.at ?? e.path);
+      if (read === undefined || !equal(read, e.value)) fail("read-back", `${at}: ${e.path} does not read back as written${e.at === undefined ? "" : ` at ${e.at}`}`);
 
       const own = doc.locate(e.path), up = parent(e.path), outer = up === undefined ? undefined : doc.locate(up);
       if (!(own.ok && inside(r.edit, own)) && !(outer?.ok && inside(r.edit, outer))) fail("locality", `${at}: the splice for ${e.path} lies outside its own span and its parent's`);

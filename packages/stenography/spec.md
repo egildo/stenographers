@@ -1,6 +1,6 @@
 # Stenography
 
-**0.2.0.** The contract a stenographer meets. The reasoning and the prior art behind each
+**0.3.0.** The contract a stenographer meets. The reasoning and the prior art behind each
 rule are in 0km's `proposals/stenography-contract.md`.
 
 A stenographer writes an edited value back over its old bytes, in the author's style, and touches nothing else.
@@ -56,8 +56,9 @@ values with, and the equality they compare by.
    changed.
 3. **`identity`**. Writing the value a path already holds answers a splice whose bytes equal the bytes it
    replaces.
-4. **`read-back`**. After a `write` splice is applied, the path reads as the value written. A write that cannot
-   meet this is a refusal, never a splice.
+4. **`read-back`**. After a `write` splice is applied, the path reads as the value written. When the value names
+   its own path, as a Markdown heading names its section, the write moves it, and the host names the path to read.
+   A write that cannot meet this is a refusal, never a splice.
 5. **`locality`**. A splice lies inside the span `locate` gives for the edited path or for its parent. After it
    is applied, every listed path that is not the edited one, below it or above it reads as before.
 6. **`independent`**. Splices for two paths, neither below the other, do not overlap, and applied in either
@@ -79,7 +80,8 @@ failures, or the reason it is skipped) and registers nothing. A host is:
 - `writer`, and the `features` it declares;
 - `corpus`: documents `open` must take;
 - `read(bytes)`: the paths in a document and the value at each;
-- `edits(bytes)`: writes that must succeed, so a writer that refuses everything fails;
+- `edits(bytes)`: writes that must succeed, so a writer that refuses everything fails; each may name `at`, the
+  path its value reads back at when the write moves it;
 - optionally `equal`, `unreadable` (bytes to refuse as `open-unreadable`), and `known`: laws the member
   knowingly fails, each with its reason, reported as skips.
 
@@ -94,3 +96,5 @@ every change into one of the two.
 - 0.1.0: the first release.
 - 0.2.0: `inside` is no longer a feature. Below is the spec's own, by whole steps, which every member's `inside`
   already was; a member may keep one, outside the contract.
+- 0.3.0: an edit may name `at`, the path its value reads back at, for a write that moves its own path (a heading
+  renamed). Normative, and it only adds: a host that names none is read as before.
