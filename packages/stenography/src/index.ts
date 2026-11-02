@@ -34,13 +34,12 @@ export interface WriterDocument {
   write(path: string, value: EditData): WriteResult;
   add?(path: string, value: EditData): WriteResult;
   remove?(path: string): WriteResult;
-  inside?(path: string, within: string): boolean;
   amend?(staged: { readonly path: string; readonly value: EditData }, operation: EditOperation): AmendResult;
   shifted?(path: string, newer: WriterDocument): boolean;
 }
 
-export type Feature = "add" | "remove" | "inside" | "amend" | "shifted";
-export const FEATURES: readonly Feature[] = ["add", "remove", "inside", "amend", "shifted"];
+export type Feature = "add" | "remove" | "amend" | "shifted";
+export const FEATURES: readonly Feature[] = ["add", "remove", "amend", "shifted"];
 
 /** The shared refusal codes: a member answers these for these situations, and its own codes for any other. */
 export const CODES = {

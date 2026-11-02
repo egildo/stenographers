@@ -1,6 +1,6 @@
 # Stenography
 
-**0.1.0.** The contract a stenographer meets. The reasoning and the prior art behind each
+**0.2.0.** The contract a stenographer meets. The reasoning and the prior art behind each
 rule are in 0km's `proposals/stenography-contract.md`.
 
 A stenographer writes an edited value back over its old bytes, in the author's style, and touches nothing else.
@@ -25,8 +25,9 @@ document is read into values, how edits are staged, or how files are written: th
 ## The shape
 
 The types are this package's `index.ts`. Required: `claims(location)`, `open(bytes)`, and on the document
-`locate(path)` and `write(path, value)`. The **features** `add`, `remove`, `inside`, `amend` and `shifted` are
-optional; an absent one means the member does not do it.
+`locate(path)` and `write(path, value)`. The **features** `add`, `remove`, `amend` and `shifted` are
+optional; an absent one means the member does not do it. Whether one path is below another is the spec's
+(Terminology), by whole steps, so no member is asked.
 
 A writer carries no version and no vendor. Conformance is shown by passing the suite, not by a field.
 
@@ -91,3 +92,5 @@ every change into one of the two.
 ## Changelog
 
 - 0.1.0: the first release.
+- 0.2.0: `inside` is no longer a feature. Below is the spec's own, by whole steps, which every member's `inside`
+  already was; a member may keep one, outside the contract.

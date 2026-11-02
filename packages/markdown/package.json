@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "happy-dom": "20.14.6",
-    "@stenographers/stenography": "0.1.0"
+    "@stenographers/stenography": "0.2.0"
   },
   "repository": {
     "type": "git",
