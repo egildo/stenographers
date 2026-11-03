@@ -6,6 +6,8 @@ Writers that write an edited value back over its old bytes, in the author's styl
 ## Packages
 
 - [`@stenographers/markdown`](packages/markdown): the Markdown stenographer, Provenance's Markdown writer by shape.
+- [`@stenographers/html`](packages/html): the HTML stenographer at the grain of blocks, Provenance's HTML writer by
+  shape.
 
 ## Planned
 

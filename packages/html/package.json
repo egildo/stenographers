@@ -1,0 +1,32 @@
+{
+  "name": "@stenographers/html",
+  "version": "0.1.0",
+  "description": "Write an edited HTML document back over the bytes it was read from, at the grain of blocks: a block not edited keeps its bytes, an edited one is written whole. A writer for Provenance, by shape.",
+  "type": "module",
+  "exports": {
+    "./writer": "./src/writer.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "parse5": "8.0.1"
+  },
+  "devDependencies": {
+    "@stenographers/stenography": "0.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://codeberg.org/egildo/stenographers.git",
+    "directory": "packages/html"
+  },
+  "author": "Egildo Tagliareni",
+  "license": "MIT",
+  "homepage": "https://codeberg.org/egildo/stenographers",
+  "bugs": "https://codeberg.org/egildo/stenographers/issues"
+}
