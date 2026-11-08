@@ -1,4 +1,4 @@
-// Provenance's CSV writer, by shape (nothing here imports Provenance). The file is a header row and data rows, RFC 4180: cells split by commas, a cell quoted with `"` may hold a comma, a quote (doubled) or a line break, records end in CRLF, LF or CR. A path is a JSON Pointer: `/<row>` names a row by its first cell, which must be unique in the file; `/<row>/<column>` names a cell by the row and the column's header. The first cell is the row's address and is changed by writing the row, whose value then reads back at the new path. A cell's value is a string; a row's is a Map from header to string. Style: a cell is quoted when its value needs it or when its old bytes were quoted; a new row is written in the header's order and takes the file's line ending, the first break in the file. Bytes are counted here and nowhere else.
+// Provenance's CSV writer, by shape (nothing here imports Provenance). The file is a header row and data rows, RFC 4180: cells split by a delimiter, the comma unless the writer is given another, a cell quoted with `"` may hold the delimiter, a quote (doubled) or a line break, records end in CRLF, LF or CR. A path is a JSON Pointer: `/<row>` names a row by its first cell, which must be unique in the file; `/<row>/<column>` names a cell by the row and the column's header. The first cell is the row's address and is changed by writing the row, whose value then reads back at the new path. A cell's value is a string; a row's is a Map from header to string. Style: a cell is quoted when its value needs it or when its old bytes were quoted; a new row is written in the header's order and takes the file's line ending, the first break in the file. Bytes are counted here and nowhere else.
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -7,8 +7,9 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
  * The records of a CSV text, each its span (without its line terminator), its cells (each its raw span and its value) and `end`, the offset after its terminator. Throws on a quote left open or on bytes after a closing quote.
  * @returns {{ eol: string, records: { from: number, to: number, end: number, cells: { from: number, to: number, value: string }[] }[] }}
  */
-export function table(text) {
+export function table(text, delimiter = ',') {
   const eol = /\r\n|\n|\r/.exec(text)?.[0] ?? '\n';
+  const ends = (ch) => ch === delimiter || ch === '\r' || ch === '\n';
   const records = [];
   let i = 0;
   while (true) {
@@ -23,15 +24,15 @@ export function table(text) {
           if (text[i] === '"') { if (text[i + 1] === '"') { value += '"'; i += 2; continue; } i++; break; }
           value += text[i++];
         }
-        if (i < text.length && !',\r\n'.includes(text[i])) throw new SyntaxError(`bytes after the closing quote at ${i}`);
+        if (i < text.length && !ends(text[i])) throw new SyntaxError(`bytes after the closing quote at ${i}`);
       } else {
-        const j = text.slice(i).search(/[,\r\n]/);
-        const to = j < 0 ? text.length : i + j;
+        let to = i;
+        while (to < text.length && !ends(text[to])) to++;
         value = text.slice(i, to);
         i = to;
       }
       cells.push({ from: cellFrom, to: i, value });
-      if (text[i] === ',') { i++; continue; }
+      if (text[i] === delimiter) { i++; continue; }
       break;
     }
     const to = i;
@@ -42,9 +43,9 @@ export function table(text) {
   return { eol, records };
 }
 
-const needsQuotes = (v) => /[",\r\n]/.test(v) || /^\s|\s$/.test(v);
+const needsQuotes = (v, delimiter) => v.includes(delimiter) || /["\r\n]/.test(v) || /^\s|\s$/.test(v);
 /** A cell's bytes for `value`: quoted when the value needs it or the old cell was. */
-export const format = (value, wasQuoted = false) => (wasQuoted || needsQuotes(value) ? `"${value.replaceAll('"', '""')}"` : value);
+export const format = (value, wasQuoted = false, delimiter = ',') => (wasQuoted || needsQuotes(value, delimiter) ? `"${value.replaceAll('"', '""')}"` : value);
 
 // Stenography's refusal rule: a wrong-typed path or value is the caller's bug and throws; a data problem is a refusal with its code.
 const isEditData = (v) => v === null || ['string', 'number', 'bigint', 'boolean'].includes(typeof v) || (Array.isArray(v) && v.every(isEditData)) || (v instanceof Map && [...v].every(([k, x]) => typeof k === 'string' && isEditData(x)));
@@ -57,15 +58,16 @@ const steps = (path) => {
 const refuse = (code, reason) => ({ ok: false, code, reason });
 
 /**
- * @param {{ claims?: (location: string) => boolean }} [options]
+ * @param {{ claims?: (location: string) => boolean, delimiter?: string }} [options] `delimiter`: the one character cells are split by, the comma unless given (`;` for a file Excel wrote in a locale whose decimal mark is the comma, `\t` for tab-separated).
  */
-export function csvWriter({ claims = (location) => /\.csv$/i.test(location) } = {}) {
+export function csvWriter({ claims = (location) => /\.csv$/i.test(location), delimiter = ',' } = {}) {
+  if (typeof delimiter !== 'string' || delimiter.length !== 1 || /["\r\n]/.test(delimiter)) throw new TypeError('a delimiter is one character, not a quote or a line break');
   return {
     claims,
     open(bytes) {
       let text, parsed;
       try { text = decoder.decode(bytes); } catch { return refuse('open-unreadable', 'the file is not UTF-8'); }
-      try { parsed = table(text); } catch (e) { return refuse('open-unreadable', e.message); }
+      try { parsed = table(text, delimiter); } catch (e) { return refuse('open-unreadable', e.message); }
       const { eol, records } = parsed;
       const [header, ...rows] = records;
       if (text === '') return refuse('open-unreadable', 'the file has no header row');
@@ -111,8 +113,8 @@ export function csvWriter({ claims = (location) => /\.csv$/i.test(location) } = 
         return columns.map((h, c) => {
           const v = value.get(h) ?? '';
           const cell = old?.cells[c];
-          return cell && v === cell.value ? text.slice(cell.from, cell.to) : format(v, cell && wasQuoted(cell));
-        }).join(',');
+          return cell && v === cell.value ? text.slice(cell.from, cell.to) : format(v, cell && wasQuoted(cell), delimiter);
+        }).join(delimiter);
       };
       const checkValue = (value) => { if (!isEditData(value)) throw new TypeError('a value is EditData: a scalar, an array or a Map, never a plain object'); };
       return {
@@ -133,7 +135,7 @@ export function csvWriter({ claims = (location) => /\.csv$/i.test(location) } = 
               if (typeof value !== 'string') return refuse('edit-unrepresentable', 'a cell holds a string');
               // The first cell is the row's address: changing it alone would move every other cell of the row (the locality law). The row is written instead.
               if (t.cell === t.row.cells[0] && value !== t.cell.value) return refuse('row-key-fixed', 'the first cell is the row\'s address; write the row to rename it');
-              return splice(t.cell.from, t.cell.to, value === t.cell.value ? text.slice(t.cell.from, t.cell.to) : format(value, wasQuoted(t.cell)));
+              return splice(t.cell.from, t.cell.to, value === t.cell.value ? text.slice(t.cell.from, t.cell.to) : format(value, wasQuoted(t.cell), delimiter));
             }
             if (!(value instanceof Map)) return refuse('edit-unrepresentable', 'a row is a Map from header to string');
             // A row given without its first cell keeps its key.

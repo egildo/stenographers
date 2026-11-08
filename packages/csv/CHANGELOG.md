@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — 2026-11-08
+
+- **A delimiter.** `csvWriter({ delimiter })` takes the one character cells are split by, the comma unless given:
+  `;` for a file Excel wrote in a locale whose decimal mark is the comma, `\t` for a tab-separated file. The
+  delimiter, not the comma, is what brings a cell its quotes. `table` and `format` take it too. The suite runs over
+  a semicolon-separated file as well.
+
 ## 0.2.0 — 2026-11-08
 
 - **All four features.** `amend` applies a cell set inside a row a caller has staged, answering the row's new Map;

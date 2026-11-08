@@ -11,9 +11,9 @@ const decode = (b) => new TextDecoder('utf-8', { fatal: true }).decode(b);
 const step = (s) => s.replaceAll('~', '~0').replaceAll('/', '~1');
 
 /** The rows whose key is unique and whose cells match the header, each a Map, and their cells. */
-function read(bytes) {
+const reader = (delimiter) => (bytes) => {
   let records;
-  try { records = table(decode(bytes)).records; } catch { return undefined; }
+  try { records = table(decode(bytes), delimiter).records; } catch { return undefined; }
   const [header, ...rows] = records;
   const columns = header.cells.map((c) => c.value);
   const keys = rows.map((r) => r.cells[0].value);
@@ -25,14 +25,16 @@ function read(bytes) {
     columns.forEach((h, c) => at.set(`/${step(key)}/${step(h)}`, r.cells[c].value));
   }
   return { paths: [...at.keys()], at: (p) => at.get(p) };
-}
+};
 
-run({
-  writer: csvWriter(),
+/** The host for one delimiter over the fixtures named. */
+const host = (delimiter, files) => ({
+  writer: csvWriter({ delimiter }),
   features: ['add', 'remove', 'amend', 'shifted'],
-  corpus: fs.readdirSync(dir).filter((f) => f.endsWith('.csv')).sort().map((f) => fs.readFileSync(path.join(dir, f))),
-  read,
+  corpus: files.map((f) => fs.readFileSync(path.join(dir, f))),
+  read: reader(delimiter),
   edits(bytes) {
+    const read = reader(delimiter);
     const { paths, at } = read(bytes);
     const rows = paths.filter((p) => at(p) instanceof Map);
     const [first, last] = [rows[0], rows.at(-1)];
@@ -46,4 +48,7 @@ run({
       { path: `${last}/${step(columns[1])}`, value: 'tail' },
     ];
   }
-}, 'csv');
+});
+
+run(host(',', ['bare.csv', 'floors-types.csv', 'small.csv']), 'csv');
+run(host(';', ['semicolon.csv']), 'csv, semicolon');

@@ -14,14 +14,17 @@ npm install @stenographers/csv
 
 One entry, `@stenographers/csv/writer`:
 
-- `csvWriter()`: Provenance's CSV writer, by shape (`claims`, `open` giving `locate`, `write`, and all four features:
-  `add`, `remove`, `amend` and `shifted`).
-- `table(text)`: the file's records, each its span, its cells' spans and values, the reading the writer itself
-  uses, so a caller pairs its values with the same bytes.
-- `format(value, wasQuoted)`: a cell's bytes for a value.
+- `csvWriter({ claims, delimiter })`: Provenance's CSV writer, by shape (`claims`, `open` giving `locate`, `write`,
+  and all four features: `add`, `remove`, `amend` and `shifted`). `delimiter` is the one character cells are split
+  by, the comma unless given: `;` for a file Excel wrote in a locale whose decimal mark is the comma, `\t` for a
+  tab-separated file. It is not a style option: the delimiter is the file's dialect, not a choice the writer makes,
+  and the caller knows it where the writer cannot.
+- `table(text, delimiter)`: the file's records, each its span, its cells' spans and values, the reading the writer
+  itself uses, so a caller pairs its values with the same bytes.
+- `format(value, wasQuoted, delimiter)`: a cell's bytes for a value.
 
-**The file.** RFC 4180: a header row, then data rows; cells split by commas; a cell in `"` may hold a comma, a quote
-(doubled) or a line break; records end in CRLF, LF or CR, and the last may end in none. UTF-8.
+**The file.** RFC 4180: a header row, then data rows; cells split by the delimiter; a cell in `"` may hold the
+delimiter, a quote (doubled) or a line break; records end in CRLF, LF or CR, and the last may end in none. UTF-8.
 
 **Paths.** A JSON Pointer. `/<row>` names a row by its first cell, which must be unique in the file; `/<row>/<column>`
 names a cell by the row and the column's header, each step escaped as RFC 6901 escapes a step. In viale-merello's
@@ -40,8 +43,8 @@ that is not a string is refused inside; a path not below the staged row is not i
 rows are named by their first cell and columns by their header, so nothing along a path is a position that a later
 version could move.
 
-**Style.** A cell is quoted when its value holds a comma, a quote, a line break or an outer space, or when its old
-bytes were quoted; otherwise bare. The line ending is the file's first break. Nothing else in the file is touched.
+**Style.** A cell is quoted when its value holds the delimiter, a quote, a line break or an outer space, or when its
+old bytes were quoted; otherwise bare. The line ending is the file's first break. Nothing else in the file is touched.
 
 **Refusals.** The shared codes, and three of its own: `row-key-duplicate` for a path to a row whose first cell
 another row has too, or a write that would make one; `row-ragged` for a path to a row with more or fewer cells than
@@ -52,7 +55,8 @@ UTF-8 are `open-unreadable`.
 
 ## What it does not do
 
-One delimiter, the comma. No column added, removed or renamed. No header written. No row inserted at a place: a row
+No sniffing: the delimiter is the caller's to name, and a wrong one reads the file as one column. No column added,
+removed or renamed. No header written. No row inserted at a place: a row
 added goes at the end. It holds no file: it answers a splice over the bytes it was given, and writing it is the
 caller's.
 
@@ -60,5 +64,5 @@ caller's.
 
 `npm test`: the seven laws of `@stenographers/stenography` over viale-merello's `model/floors/types.csv`, a small
 file with CRLF line ends, a quoted cell holding a comma, a quote and a line break, an empty cell and a quoted cell
-that needs no quotes, and a bare file with no line ending after its last row; and `test/writer.test.js`, each edit
-in exact bytes.
+that needs no quotes, and a bare file with no line ending after its last row; the same seven laws over a
+semicolon-separated file; and `test/writer.test.js`, each edit in exact bytes.

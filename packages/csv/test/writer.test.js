@@ -10,8 +10,8 @@ const decoder = new TextDecoder();
 const bytesOf = (file) => fs.readFileSync(`${dir}/${file}`);
 
 /** The file's text after the edit, or the refusal. */
-function after(bytes, edit) {
-  const result = edit(csvWriter().open(bytes).document);
+function after(bytes, edit, options) {
+  const result = edit(csvWriter(options).open(bytes).document);
   if (!result.ok) return result;
   const { start, end, bytes: out } = result.edit;
   return decoder.decode(new Uint8Array([...bytes.subarray(0, start), ...out, ...bytes.subarray(end)]));
@@ -103,6 +103,17 @@ test('amend: a cell set inside a staged row changes its Map; what is not below i
   assert.equal(doc.amend(staged, { op: 'add', path: '/a/Value', value: '9' }).ok, false);
   assert.equal(doc.amend(staged, { op: 'remove', path: '/a/Value' }).ok, false);
   assert.equal(doc.amend(staged, { op: 'set', path: '/a/Value', value: 9 }).ok, false);
+});
+
+test('another delimiter: cells split by it, a comma is plain, the delimiter itself brings quotes', () => {
+  const semi = { delimiter: ';' };
+  const bytes = bytesOf('semicolon.csv'), text = decoder.decode(bytes);
+  assert.equal(after(bytes, (d) => d.write('/massetto/Spessore', '8,5'), semi), text.replace('massetto;8;', 'massetto;8,5;'));
+  assert.equal(after(bytes, (d) => d.write('/massetto/Nota', 'sabbia; cemento'), semi), text.replace('massetto;8;', 'massetto;8;"sabbia; cemento"'));
+  assert.equal(after(bytes, (d) => d.add('/guaina', new Map([['Spessore', '0,4']])), semi), `${text}guaina;0,4;\r\n`);
+  assert.equal(text.slice(0, csvWriter(semi).open(bytes).document.locate('/intonaco/Nota').start), 'Nome;Spessore;Nota\r\nintonaco;1,5;');
+  assert.throws(() => csvWriter({ delimiter: ';;' }), TypeError);
+  assert.throws(() => csvWriter({ delimiter: '"' }), TypeError);
 });
 
 test('shifted: a row named by its first cell never shifts', () => {
