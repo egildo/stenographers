@@ -1,4 +1,4 @@
-// Provenance's HTML writer, by shape (nothing here imports Provenance), at the grain of blocks (0km's proposals/studio.md, "The first proof starts from HTML"). A path is a JSON Pointer over the document's containers: the body is the empty path, and an element with an `id` whose own children are blocks is a container, its step the id, `~0` `~1` escaping `~` `/` as RFC 6901 does, nested under the container it sits in (`/measure/first-room`). A path addresses its container's run, the bytes between its start tag and its end tag. The value is the run's blocks, the container's child elements in order, each its HTML, the bytes it had at the base and whether it is unchanged: a block unchanged keeps its bytes, a block changed is written as its HTML, whole. What lies between blocks (white space, comments, `<script>`, `<style>`, `<template>`) is the gaps', not the value's, and stays. Only `set`: a block inserted, deleted or moved is a new value for its container. Bytes are counted here and nowhere else.
+// Provenance's HTML writer, by shape (nothing here imports Provenance), at the grain of blocks (0km's proposals/studio.md, "The first proof starts from HTML"). A path is a JSON Pointer over the document's containers: the body is the empty path, and an element with an `id` whose own children are blocks is a container, its step the id, `~0` `~1` escaping `~` `/` as RFC 6901 does, nested under the container it sits in (`/measure/first-room`). A path addresses its container's run, the bytes between its start tag and its end tag. The value is the run's blocks, the container's child elements in order, each its HTML, the bytes it had at the base and whether it is unchanged: a block unchanged keeps its bytes, a block changed is written as its HTML, whole. What lies between blocks (white space, comments, `<script>`, `<style>`, `<template>`) is the gaps', not the value's, and stays. One gap element has a path of its own: a data block, a `<script>` with an `id` whose `type` ends in `json` (`application/ld+json`), named like a container under the one it sits in; its value is its text, written over the text between its tags, the tags and everything around them kept. Only `set`: a block inserted, deleted or moved is a new value for its container. Bytes are counted here and nowhere else.
 import { defaultTreeAdapter, parse, parseFragment, serializeOuter } from 'parse5';
 
 const encoder = new TextEncoder();
@@ -10,12 +10,14 @@ const ink = (n) => n.nodeName === '#text' && /\S/.test(n.value);
 // The elements whose content is running text (HTML's phrasing content, and the blocks that hold only it): nothing in them is a container, whatever its children.
 const TEXT = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'button', 'cite', 'code', 'data', 'del', 'dfn', 'em', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'mark', 'q', 's', 'samp', 'small', 'span', 'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr', 'svg', 'math', 'picture', 'select', 'textarea', 'output', 'meter', 'progress']);
 const inText = (el) => TEXT.has(el.tagName) || el.childNodes.some(ink);
+// HTML's data block: a script whose type is not a script's, here one that ends in `json`; its end tag must be written, so its text has a span.
+const isData = (el) => el.tagName === 'script' && el.sourceCodeLocation?.endTag && /json$/i.test(el.attrs.find((a) => a.name === 'type')?.value ?? '');
 
 /** A container's step: its id, escaped as RFC 6901 escapes a step. */
 export const step = (id) => id.replace(/~/g, '~0').replace(/\//g, '~1');
 
 /**
- * The containers of an HTML text, by path, in document order: the body, then every element with an `id` whose end tag is written and which is not running text nor inside it (a paragraph, a `<span>`, an element holding text of its own, and all they hold).
+ * The containers of an HTML text, by path, in document order: the body, then every element with an `id` whose end tag is written and which is not running text nor inside it (a paragraph, a `<span>`, an element holding text of its own, and all they hold); and every data block with an `id`, whose run is its text and whose blocks are none (`tag` is `script`).
  * ponytail: a container whose end tag is implied (an `<li id>` closed by the next) is a block of its parent, and an id repeated under one parent names its first; widen when a document needs them.
  * @returns {Map<string, { from: number, to: number, tag: string, blocks: { from: number, to: number, node: object }[] }>} each run's span in the text and its blocks' spans
  */
@@ -23,11 +25,11 @@ export function outline(text) {
   const runs = new Map();
   const visit = (node, path) => {
     for (const child of node.childNodes ?? []) {
-      if (!child.tagName || GAPS.has(child.tagName)) continue;
+      if (!child.tagName) continue;
       const id = child.attrs.find((a) => a.name === 'id')?.value;
-      const own = id != null && id !== '' && container(child) ? `${path}/${step(id)}` : null;
+      const own = id != null && id !== '' && (container(child) || isData(child)) ? `${path}/${step(id)}` : null;
       if (own != null && !runs.has(own)) add(own, child);
-      if (!inText(child)) visit(child, own ?? path);
+      if (!GAPS.has(child.tagName) && !inText(child)) visit(child, own ?? path);
     }
   };
   const container = (el) => el.sourceCodeLocation?.startTag && el.sourceCodeLocation.endTag && !inText(el);
@@ -115,6 +117,15 @@ export function htmlWriter({ claims = (location) => /\.html?$/i.test(location) }
           if (!isEditData(value)) throw new TypeError('a value is EditData: a scalar, an array or a Map, never a plain object');
           const run = find(path);
           if (run.ok === false) return run;
+          if (run.tag === 'script') {
+            if (typeof value !== 'string') return refuse('edit-unrepresentable', 'the value of a data block is its text, a string');
+            // Read back: the block, parsed again in the new text, holds exactly the text given; `</script` inside it ends the element early.
+            const after = outline(text.slice(0, run.from) + value + text.slice(run.to)).get(path);
+            if (!after || after.tag !== 'script' || after.from !== run.from || after.to !== run.from + value.length) {
+              return refuse('edit-read-back', `the text given for ${JSON.stringify(path)} would end its <script> early; serialize "</" as "<\\/"`);
+            }
+            return { ok: true, edit: { start: byte(run.from), end: byte(run.to), bytes: encoder.encode(value) } };
+          }
           if (!wellFormed(value)) return refuse('edit-unrepresentable', 'the value of a container is its blocks, each [html, its bytes at the base or null, unchanged]');
           const { text: out, kept } = writeRun(text, run, value);
           // Read back: the container, parsed again in the new text, holds the blocks the value means. A block that kept its bytes means what they meant: unchanged is the caller's word, and the caller's HTML of it may be a reader's narrower one.

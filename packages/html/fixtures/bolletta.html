@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Bolletta della luce</title>
+  <link rel="stylesheet" href="styles/reset.css">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/type.css">
+  <link rel="stylesheet" href="styles/page.css">
+  <link rel="stylesheet" href="styles/components.css">
+</head>
+<body itemscope itemid="#doc" itemtype="https://schema.org/CreativeWork">
+
+<section class="summary-page" id="riepilogo">
+  <header class="brand">
+    <div class="mark"><svg viewBox="0 0 40 40" role="img" aria-label="Marchio di Energia Esempio"><rect fill="#0a5f7a" width="40" height="40" rx="6"/><rect fill="#fff" x="9" y="22" width="5.5" height="9"/><rect fill="#fff" x="17.25" y="15" width="5.5" height="16"/><rect fill="#fff" x="25.5" y="8" width="5.5" height="23"/></svg></div>
+    <p class="brand-name">Energia Esempio S.p.A.</p>
+    <p class="brand-sub">Fattura di energia elettrica · uso domestico · Servizio clienti 800 000 000</p>
+  </header>
+
+  <section class="envelope">
+    <section class="address">
+      <p class="sender">Energia Esempio S.p.A. · Via del Campione 1 · 00000 Borgo Esempio</p>
+      <p class="recipient"><span itemprop="cliente">Paola Esempio</span></p>
+      <p><span itemprop="indirizzo">Via Immaginaria 12</span></p>
+      <p><span itemprop="localita">00000 Borgo Esempio (XX)</span></p>
+    </section>
+    <section class="ident">
+      <p class="label">Codice cliente</p><p><span itemprop="codice">100200300</span></p>
+      <p class="label">Numero fattura</p><p class="invoice"><span itemprop="fattura">2026/0000123</span></p>
+      <p class="label">Data emissione</p><p><span itemprop="emissione">05/10/2026</span></p>
+      <p class="label">POD</p><p><span itemprop="pod">IT001E70000000</span></p>
+      <p class="label">Periodo di fatturazione</p><p><span itemprop="periodo">01/08/2026 – 30/09/2026</span></p>
+      <p class="label">Offerta</p><p>Luce Chiara · prezzo fisso</p>
+    </section>
+  </section>
+
+  <section class="due">
+    <p class="label">Importo da pagare</p>
+    <p class="label">Scadenza</p>
+    <p class="amount"><span itemprop="importo">130,72 €</span></p>
+    <p class="deadline"><span itemprop="scadenza">24/10/2026</span></p>
+  </section>
+  <p class="pay">Entro il <span itemprop="scadenza">24/10/2026</span> paga <span itemprop="importo">130,72 €</span> con bonifico a Energia Esempio S.p.A., IBAN IT00 X000 0000 0000 0000 0000 000, causale «Fattura n. <span itemprop="fattura">2026/0000123</span>». Il dettaglio è alle pagine seguenti, a partire da <a class="ref" href="#dettaglio">pagina</a>.</p>
+
+  <table class="summary" id="tab-riepilogo"><caption>Come si compone il totale</caption><tbody>
+<tr><td>Spesa per la materia energia</td><td class="num"><span itemprop="materia">74,98 €</span></td></tr>
+<tr><td>Trasporto e gestione del contatore</td><td class="num"><span itemprop="trasporto">19,80 €</span></td></tr>
+<tr><td>Oneri di sistema</td><td class="num"><span itemprop="oneri">14,88 €</span></td></tr>
+<tr><td>Imposte (accise)</td><td class="num"><span itemprop="accise">9,18 €</span></td></tr>
+<tr class="last"><td>IVA 10%</td><td class="num"><span itemprop="iva">11,88 €</span></td></tr>
+<tr class="total"><td>Totale fattura</td><td class="num"><span itemprop="importo">130,72 €</span></td></tr>
+</tbody></table>
+</section>
+
+<section class="detail" id="detail-section">
+  <h2 class="section-title" id="dettaglio">Dettaglio della fattura</h2>
+  <table class="fattura" id="tab-fattura"><thead><tr><th class="c-desc">Descrizione</th><th class="num c-qty">Quantità</th><th class="c-unit">Unità</th><th class="num c-price">Prezzo unitario</th><th class="num c-amount">Importo</th></tr></thead>
+<tbody>
+<tr class="group"><th colspan="5">Spesa per la materia energia</th></tr>
+<tr><td>Energia elettrica F1 (lun–ven, 8–19)</td><td class="num"><span itemprop="f1">114,7</span></td><td>kWh</td><td class="num">0,152400 €/kWh</td><td class="num"><span itemprop="e_f1">17,48 €</span></td></tr>
+<tr><td>Energia elettrica F2 (lun–ven 7–8 e 19–23, sab 7–23)</td><td class="num"><span itemprop="f2">112,3</span></td><td>kWh</td><td class="num">0,141800 €/kWh</td><td class="num"><span itemprop="e_f2">15,92 €</span></td></tr>
+<tr><td>Energia elettrica F3 (notte, domeniche e festivi)</td><td class="num"><span itemprop="f3">177,3</span></td><td>kWh</td><td class="num">0,129600 €/kWh</td><td class="num"><span itemprop="e_f3">22,98 €</span></td></tr>
+<tr class="last"><td>Quota fissa di commercializzazione e dispacciamento</td><td class="num"><span itemprop="mesi">2</span></td><td>mesi</td><td class="num">9,300000 €/mese</td><td class="num"><span itemprop="comm">18,60 €</span></td></tr>
+<tr class="sub"><td colspan="4">Totale spesa per la materia energia</td><td class="num"><span itemprop="materia">74,98 €</span></td></tr>
+<tr class="group"><th colspan="5">Trasporto e gestione del contatore</th></tr>
+<tr><td>Quota fissa, compresa la gestione del contatore</td><td class="num"><span itemprop="mesi">2</span></td><td>mesi</td><td class="num">3,250000 €/mese</td><td class="num"><span itemprop="fissa">6,50 €</span></td></tr>
+<tr><td>Quota potenza (<span itemprop="potenza">3,0</span> kW impegnati)</td><td class="num"><span itemprop="kwmese">6,0</span></td><td>kW·mese</td><td class="num">1,650000 €/kW·mese</td><td class="num"><span itemprop="qpot">9,90 €</span></td></tr>
+<tr class="last"><td>Quota energia</td><td class="num"><span itemprop="consumo">404,3</span></td><td>kWh</td><td class="num">0,008400 €/kWh</td><td class="num"><span itemprop="qen">3,40 €</span></td></tr>
+<tr class="sub"><td colspan="4">Totale trasporto e gestione del contatore</td><td class="num"><span itemprop="trasporto">19,80 €</span></td></tr>
+<tr class="group"><th colspan="5">Oneri di sistema</th></tr>
+<tr class="last"><td>Oneri generali di sistema</td><td class="num"><span itemprop="consumo">404,3</span></td><td>kWh</td><td class="num">0,036800 €/kWh</td><td class="num"><span itemprop="oneri">14,88 €</span></td></tr>
+<tr class="sub"><td colspan="4">Totale oneri di sistema</td><td class="num"><span itemprop="oneri">14,88 €</span></td></tr>
+<tr class="group"><th colspan="5">Imposte</th></tr>
+<tr class="last"><td>Accisa sull’energia elettrica</td><td class="num"><span itemprop="consumo">404,3</span></td><td>kWh</td><td class="num">0,022700 €/kWh</td><td class="num"><span itemprop="accise">9,18 €</span></td></tr>
+<tr class="sub"><td colspan="4">Totale imposte (accise)</td><td class="num"><span itemprop="accise">9,18 €</span></td></tr>
+<tr class="sub base"><td colspan="4">Totale imponibile (somma dei totali sopra)</td><td class="num"><span itemprop="imponibile">118,84 €</span></td></tr>
+<tr class="last vat"><td colspan="4">IVA 10% sull’imponibile di <span itemprop="imponibile">118,84 €</span></td><td class="num"><span itemprop="iva">11,88 €</span></td></tr>
+<tr class="total"><td colspan="4">Totale fattura</td><td class="num"><span itemprop="importo">130,72 €</span></td></tr>
+</tbody></table>
+</section>
+
+<section class="readings" id="readings-section">
+  <h2 class="readings-title" id="letture">Letture e consumi</h2>
+  <p class="intro">Una riga per ognuno dei <span itemprop="giorni">61</span> giorni del periodo, <span itemprop="consumo">404,3</span> kWh in tutto: i consumi in kWh per fascia oraria, il totale del giorno e la lettura del contatore a fine giornata. Domeniche e festivi sono su fondo grigio e rientrano per intero nella fascia F3.</p>
+  <table class="letture"><thead><tr><th class="r-date">Data</th><th class="num r-f">F1 (kWh)</th><th class="num r-f">F2 (kWh)</th><th class="num r-f">F3 (kWh)</th><th class="num r-f">Totale (kWh)</th><th class="num r-meter">Lettura (kWh)</th></tr></thead>
+<tbody>
+<template data-repeat="letture">
+<tr>
+  <td><span itemprop="giorno"></span>&nbsp;<span itemprop="data"></span><data itemprop="festivo"></data></td>
+  <td class="num"><data itemprop="f1"></data></td>
+  <td class="num"><data itemprop="f2"></data></td>
+  <td class="num"><data itemprop="f3"></data></td>
+  <td class="num"><data itemprop="totale"></data></td>
+  <td class="num"><data itemprop="lettura"></data></td>
+</tr>
+</template>
+<tr class="sub"><td>Totale del periodo</td><td class="num"><span itemprop="f1">114,7</span></td><td class="num"><span itemprop="f2">112,3</span></td><td class="num"><span itemprop="f3">177,3</span></td><td class="num"><span itemprop="consumo">404,3</span></td><td class="num"></td></tr>
+</tbody></table>
+</section>
+
+<section class="info" id="info-section">
+  <h2 id="informazioni">Informazioni utili</h2>
+  <p><strong>Come pagare.</strong> Entro la scadenza, con bonifico sull’IBAN indicato a pagina 1 e il numero della fattura come causale, oppure con addebito diretto, attivabile gratuitamente al numero verde 800 000 000.</p>
+  <p><strong>Reclami.</strong> Scrivi a reclami@energiaesempio.example con il codice cliente e il numero della fattura: risponderemo per iscritto entro 30 giorni.</p>
+  <p><strong>Fasce orarie.</strong> F1: lunedì–venerdì 8–19. F2: lunedì–venerdì 7–8 e 19–23, sabato 7–23. F3: notte, domeniche e festivi. <strong>POD.</strong> Il codice del punto di consegna: non cambia se cambi fornitore.</p>
+  <figure class="meter"><img src="images/contatore.png" alt="Il display del contatore"><figcaption>Il display del contatore: la lettura in kWh e, accanto, la fascia oraria in corso.</figcaption></figure>
+  <p class="fine">Documento dimostrativo: nome del fornitore, nome e indirizzo del cliente, codici, IBAN, recapiti e importi sono di fantasia.</p>
+</section>
+
+<script type="application/ld+json" id="__beltype-store">
+{
+  "@context": ["https://schema.org/", {"beltype": "urn:beltype:", "csvw": "http://www.w3.org/ns/csvw#", "Bind": "beltype:Bind", "ref": {"@id": "beltype:ref", "@type": "@id"}, "property": "beltype:property", "calculate": "beltype:calculate", "readonly": "beltype:readonly"}],
+  "@graph": [
+    {"@id": "#doc", "@type": "CreativeWork", "codice": "100200300", "cliente": "Paola Esempio", "indirizzo": "Via Immaginaria 12", "localita": "00000 Borgo Esempio (XX)", "fattura": "2026/0000123", "emissione": "05/10/2026", "pod": "IT001E70000000", "periodo": "01/08/2026 – 30/09/2026", "mesi": "2", "potenza": "3,0", "kwmese": "6,0", "scadenza": "24/10/2026", "e_f1": "17,48 €", "e_f2": "15,92 €", "e_f3": "22,98 €", "comm": "18,60 €", "materia": "74,98 €", "fissa": "6,50 €", "qpot": "9,90 €", "qen": "3,40 €", "trasporto": "19,80 €", "oneri": "14,88 €", "accise": "9,18 €", "imponibile": "118,84 €", "iva": "11,88 €", "importo": "130,72 €", "letture": {"@type": "csvw:Table", "csvw:url": "letture.csv"}, "giorni": 61, "f1": "114,7", "f2": "112,3", "f3": "177,3", "consumo": "404,3"},
+    {"@type": "Bind", "ref": "#doc", "property": "giorni", "calculate": "count(?letture?*)"},
+    {"@type": "Bind", "ref": "#doc", "property": "f1", "calculate": "let $t := round(sum(?letture?*?f1) * 10) return concat($t idiv 10, ',', $t mod 10)"},
+    {"@type": "Bind", "ref": "#doc", "property": "f2", "calculate": "let $t := round(sum(?letture?*?f2) * 10) return concat($t idiv 10, ',', $t mod 10)"},
+    {"@type": "Bind", "ref": "#doc", "property": "f3", "calculate": "let $t := round(sum(?letture?*?f3) * 10) return concat($t idiv 10, ',', $t mod 10)"},
+    {"@type": "Bind", "ref": "#doc", "property": "consumo", "calculate": "let $t := round(sum(?letture?*?totale) * 10) return concat($t idiv 10, ',', $t mod 10)"}
+  ]
+}
+</script>
+
+</body>
+</html>

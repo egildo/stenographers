@@ -1,6 +1,6 @@
 {
   "name": "@stenographers/html",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Write an edited HTML document back over the bytes it was read from, at the grain of blocks: a block not edited keeps its bytes, an edited one is written whole. A writer for Provenance, by shape.",
   "type": "module",
   "exports": {

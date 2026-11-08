@@ -15,8 +15,9 @@ npm install @stenographers/html
 One entry, `@stenographers/html/writer`:
 
 - `htmlWriter()`: Provenance's HTML writer, by shape (`claims`, `open` giving `locate` and `write`). Only `set`.
-- `outline(text)`: the document's containers by path, each its run's span and its blocks' spans, the reading the
-  writer itself uses, so a caller pairs its blocks with the same bytes.
+- `outline(text)`: the document's containers and data blocks by path, each its run's span and its blocks' spans
+  (a data block's `tag` is `script` and its blocks are none), the reading the writer itself uses, so a caller pairs
+  its blocks, or a data block's text, with the same bytes.
 - `means(node)`, `meaningsIn(tag, html)`: what a block means, its HTML as parse5 reads it in its container.
 - `writeRun(text, run, value)`: a run's new bytes over its old.
 
@@ -31,18 +32,27 @@ unchanged one keeps them, whatever HTML the caller reads it as; any other is wri
 takes its neighbours' indent; a block deleted takes the gap before it. What lies between blocks (white space,
 comments, `<script>`, `<style>`, `<template>`) is the gaps', and stays.
 
+**Data blocks.** One gap element has a path of its own: a `<script>` with an `id` whose `type` ends in `json`, HTML's
+data block (`<script type="application/ld+json" id="__beltype-store">`, where BelType's studio keeps a document's
+values). Its path is its id under the container it sits in, like a container's; its value is its text, a string,
+written over the text between its tags, which keep their bytes along with everything around them. It is not one
+of its container's blocks, so writing the container leaves it, and writing it leaves the container's blocks. The
+caller serializes the JSON; text that would end the element early (`</script` inside it) is refused as
+`edit-read-back`, and the JSON way around it is to write `</` as `<\/`, which means the same.
+
 **Refusals.** The shared codes. A value whose blocks would not read back as themselves in their container (a
-`<td>` in a body, two paragraphs given as one) is `edit-read-back`.
+`<td>` in a body, two paragraphs given as one), or a data block's text that would not read back whole, is
+`edit-read-back`.
 
 ## What it does not do
 
 It holds no document, no file and no editor: which old block a new one stands for is the caller's, by node identity
 in an editor. A changed block is written whole, a list or a header with it. A container whose end tag is implied (an
 `<li id>` closed by the next one) is a block of its parent, and an id repeated under one parent names its first. The
-head is not written.
+head is not written. A data block without an id, a `<style>`, a `<template>` and a comment have no path.
 
 ## Proved by
 
-`npm test`: the seven laws of `@stenographers/stenography` over the Quiet Press (the BelType studio's demo) and a
-small document with CRLF line ends, a comment, a script, nested containers and an id that needs escaping; and
-`test/writer.test.js`, each edit in exact bytes.
+`npm test`: the seven laws of `@stenographers/stenography` over the Quiet Press (the BelType studio's demo), a
+small document with CRLF line ends, a comment, a script, nested containers and an id that needs escaping, and
+BelType's bill specimen with its JSON-LD data block; and `test/writer.test.js`, each edit in exact bytes.

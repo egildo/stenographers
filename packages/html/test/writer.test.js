@@ -57,6 +57,25 @@ test('blocks that would not read back as themselves are refused', () => {
   }
 });
 
+test('a data block is written as its text, tags and neighbours kept; text that would end its <script> early is refused', () => {
+  const bytes = fs.readFileSync(`${dir}/bolletta.html`), text = decoder.decode(bytes);
+  const doc = htmlWriter().open(bytes).document;
+  const run = outline(text).get('/__beltype-store');
+  const was = text.slice(run.from, run.to);
+  assert.match(was, /"cliente": "Paola Esempio"/);
+  const value = was.replace('"cliente": "Paola Esempio"', '"cliente": "Mario Prova"');
+  const result = doc.write('/__beltype-store', value);
+  assert.equal(decoder.decode(result.edit.bytes), value);
+  const span = doc.locate('/__beltype-store');
+  assert.deepEqual([result.edit.start, result.edit.end], [span.start, span.end]);
+  assert.equal(decoder.decode(bytes.subarray(span.end, span.end + 9)), '</script>');
+  assert.equal(decoder.decode(doc.write('/__beltype-store', was).edit.bytes), was);
+  assert.equal(doc.write('/__beltype-store', '{"a": "</script>"}').code, 'edit-read-back');
+  assert.equal(decoder.decode(doc.write('/__beltype-store', '{"a": "<\\/script>"}').edit.bytes), '{"a": "<\\/script>"}');
+  assert.equal(doc.write('/__beltype-store', ['x']).code, 'edit-unrepresentable');
+  assert.ok(!outline(text).get('').blocks.some((b) => b.node.tagName === 'script'), 'the data block is not one of the body\'s blocks');
+});
+
 test('a container\'s step is its id, escaped; a paragraph with an id, and an id inside running text, are not containers', () => {
   const runs = outline(fs.readFileSync(`${dir}/small.html`, 'utf8'));
   assert.deepEqual([...runs.keys()], ['', '/a~1b~0c', '/a~1b~0c/interno']);
