@@ -116,6 +116,20 @@ test('another delimiter: cells split by it, a comma is plain, the delimiter itse
   assert.throws(() => csvWriter({ delimiter: '"' }), TypeError);
 });
 
+test('a key column: rows named by it, the first cell a plain cell; without it the bill\'s weekdays repeat', () => {
+  const bill = { delimiter: ';', key: 'data' };
+  const bytes = bytesOf('letture.csv'), text = decoder.decode(bytes);
+  assert.equal(after(bytes, (d) => d.write('/01~108~12026/f1', '1,0'), bill), text.replace('sab;01/08/2026;0,0;', 'sab;01/08/2026;1,0;'));
+  assert.equal(after(bytes, (d) => d.write('/01~108~12026/giorno', 'dom'), bill), text.replace('sab;01/08/2026;', 'dom;01/08/2026;'));
+  assert.equal(after(bytes, (d) => d.write('/01~108~12026/data', '02/08/2026'), bill).code, 'row-key-fixed');
+  assert.equal(after(bytes, (d) => d.write('/01~108~12026', new Map([['data', '02/08/2026']])), bill).code, 'row-key-duplicate');
+  assert.equal(after(bytes, (d) => d.add('/01~110~12026', new Map([['giorno', 'gio'], ['festivo', '0']])), bill), `${text}gio;01/10/2026;;;;;;0\n`);
+  assert.equal(after(bytes, (d) => d.locate('/sab'), bill).code, 'edit-target-absent');
+  assert.equal(after(bytes, (d) => d.locate('/sab'), { delimiter: ';' }).code, 'row-key-duplicate');
+  assert.equal(csvWriter({ key: 'nope' }).open(bytesOf('bare.csv')).code, 'column-absent');
+  assert.throws(() => csvWriter({ key: 1 }), TypeError);
+});
+
 test('shifted: a row named by its first cell never shifts', () => {
   const doc = csvWriter().open(bytesOf('bare.csv')).document;
   const newer = csvWriter().open(new TextEncoder().encode('Name,Value\nz,0\na,1\nb,2\n')).document;

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-11-08
+
+- **A key column.** `csvWriter({ key })` takes the header of the column that names a row, CSVW's
+  `tableSchema.primaryKey`, the first column unless given. Paths, `row-key-duplicate`, `row-key-fixed` and `add`
+  follow it; a header without that column is refused at `open` as `column-absent`. One column only: a composite key
+  waits for a caller that needs it. The suite runs over BelType's bill, whose first column repeats and whose key is
+  its date.
+
 ## 0.3.0 — 2026-11-08
 
 - **A delimiter.** `csvWriter({ delimiter })` takes the one character cells are split by, the comma unless given:

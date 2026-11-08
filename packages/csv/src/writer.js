@@ -1,4 +1,4 @@
-// Provenance's CSV writer, by shape (nothing here imports Provenance). The file is a header row and data rows, RFC 4180: cells split by a delimiter, the comma unless the writer is given another, a cell quoted with `"` may hold the delimiter, a quote (doubled) or a line break, records end in CRLF, LF or CR. A path is a JSON Pointer: `/<row>` names a row by its first cell, which must be unique in the file; `/<row>/<column>` names a cell by the row and the column's header. The first cell is the row's address and is changed by writing the row, whose value then reads back at the new path. A cell's value is a string; a row's is a Map from header to string. Style: a cell is quoted when its value needs it or when its old bytes were quoted; a new row is written in the header's order and takes the file's line ending, the first break in the file. Bytes are counted here and nowhere else.
+// Provenance's CSV writer, by shape (nothing here imports Provenance). The file is a header row and data rows, RFC 4180: cells split by a delimiter, the comma unless the writer is given another, a cell quoted with `"` may hold the delimiter, a quote (doubled) or a line break, records end in CRLF, LF or CR. A path is a JSON Pointer: `/<row>` names a row by its key cell, the cell of the key column (CSVW's `primaryKey`, the first column unless the writer is given another), which must be unique in the file; `/<row>/<column>` names a cell by the row and the column's header. The key cell is the row's address and is changed by writing the row, whose value then reads back at the new path. A cell's value is a string; a row's is a Map from header to string. Style: a cell is quoted when its value needs it or when its old bytes were quoted; a new row is written in the header's order and takes the file's line ending, the first break in the file. Bytes are counted here and nowhere else.
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
@@ -58,10 +58,11 @@ const steps = (path) => {
 const refuse = (code, reason) => ({ ok: false, code, reason });
 
 /**
- * @param {{ claims?: (location: string) => boolean, delimiter?: string }} [options] `delimiter`: the one character cells are split by, the comma unless given (`;` for a file Excel wrote in a locale whose decimal mark is the comma, `\t` for tab-separated).
+ * @param {{ claims?: (location: string) => boolean, delimiter?: string, key?: string }} [options] `delimiter`: the one character cells are split by, the comma unless given (`;` for a file Excel wrote in a locale whose decimal mark is the comma, `\t` for tab-separated). `key`: the header of the column that names a row, the first column unless given. Both are the file's dialect, read by the caller from its CSVW metadata (`dialect.delimiter`, `tableSchema.primaryKey`), never sniffed here.
  */
-export function csvWriter({ claims = (location) => /\.csv$/i.test(location), delimiter = ',' } = {}) {
+export function csvWriter({ claims = (location) => /\.csv$/i.test(location), delimiter = ',', key } = {}) {
   if (typeof delimiter !== 'string' || delimiter.length !== 1 || /["\r\n]/.test(delimiter)) throw new TypeError('a delimiter is one character, not a quote or a line break');
+  if (key !== undefined && typeof key !== 'string') throw new TypeError(`a key is a column's header, a string, not ${typeof key}`);
   return {
     claims,
     open(bytes) {
@@ -72,18 +73,21 @@ export function csvWriter({ claims = (location) => /\.csv$/i.test(location), del
       const [header, ...rows] = records;
       if (text === '') return refuse('open-unreadable', 'the file has no header row');
       const columns = header.cells.map((c) => c.value);
-      const twice = columns.find((c, k) => columns.indexOf(c) !== k);
+      const twice = columns.find((c, i) => columns.indexOf(c) !== i);
       if (twice !== undefined) return refuse('column-duplicate', `the header names ${JSON.stringify(twice)} twice`);
+      // The key column's index: rows are named by their cell in it.
+      const k = key === undefined ? 0 : columns.indexOf(key);
+      if (k < 0) return refuse('column-absent', `no key column ${JSON.stringify(key)} in the header`);
       const byKey = new Map();
-      for (const r of rows) { const k = r.cells[0].value; byKey.set(k, [...(byKey.get(k) ?? []), r]); }
+      for (const r of rows) { const v = r.cells[k]?.value; byKey.set(v, [...(byKey.get(v) ?? []), r]); }
       // ponytail: O(n) per offset; a prefix table if a register grows past a few thousand rows.
       const byte = (i) => encoder.encode(text.slice(0, i)).length;
       const splice = (from, to, out) => ({ ok: true, edit: { start: byte(from), end: byte(to), bytes: encoder.encode(out) } });
       // The row a key names, or the refusal.
       const row = (key) => {
         const found = byKey.get(key);
-        if (!found) return refuse('edit-target-absent', `no row whose first cell is ${JSON.stringify(key)}`);
-        if (found.length > 1) return refuse('row-key-duplicate', `${found.length} rows have ${JSON.stringify(key)} as their first cell`);
+        if (!found) return refuse('edit-target-absent', `no row whose key cell is ${JSON.stringify(key)}`);
+        if (found.length > 1) return refuse('row-key-duplicate', `${found.length} rows have ${JSON.stringify(key)} as their key cell`);
         if (found[0].cells.length !== columns.length) return refuse('row-ragged', `the row ${JSON.stringify(key)} has ${found[0].cells.length} cells, the header ${columns.length}`);
         return found[0];
       };
@@ -133,15 +137,15 @@ export function csvWriter({ claims = (location) => /\.csv$/i.test(location), del
             if (t.root) return refuse('edit-unrepresentable', 'the file is written a row or a cell at a time');
             if (t.cell) {
               if (typeof value !== 'string') return refuse('edit-unrepresentable', 'a cell holds a string');
-              // The first cell is the row's address: changing it alone would move every other cell of the row (the locality law). The row is written instead.
-              if (t.cell === t.row.cells[0] && value !== t.cell.value) return refuse('row-key-fixed', 'the first cell is the row\'s address; write the row to rename it');
+              // The key cell is the row's address: changing it alone would move every other cell of the row (the locality law). The row is written instead.
+              if (t.cell === t.row.cells[k] && value !== t.cell.value) return refuse('row-key-fixed', 'the key cell is the row\'s address; write the row to rename it');
               return splice(t.cell.from, t.cell.to, value === t.cell.value ? text.slice(t.cell.from, t.cell.to) : format(value, wasQuoted(t.cell), delimiter));
             }
             if (!(value instanceof Map)) return refuse('edit-unrepresentable', 'a row is a Map from header to string');
-            // A row given without its first cell keeps its key.
-            const whole = new Map([[columns[0], t.row.cells[0].value], ...value]);
-            const key = whole.get(columns[0]);
-            if (key !== t.row.cells[0].value && byKey.has(key)) return refuse('row-key-duplicate', `a row whose first cell is ${JSON.stringify(key)} is already there`);
+            // A row given without its key cell keeps its key.
+            const whole = new Map([[columns[k], t.row.cells[k].value], ...value]);
+            const key = whole.get(columns[k]);
+            if (key !== t.row.cells[k].value && byKey.has(key)) return refuse('row-key-duplicate', `a row whose key cell is ${JSON.stringify(key)} is already there`);
             const out = rowBytes(whole, t.row);
             return out.ok === false ? out : splice(t.row.from, t.row.to, out);
           },
@@ -150,10 +154,10 @@ export function csvWriter({ claims = (location) => /\.csv$/i.test(location), del
             const s = steps(path);
             if (s === undefined) return refuse('path-malformed', `${JSON.stringify(path)} is not a JSON Pointer`);
             if (s.length !== 1) return refuse('edit-unrepresentable', 'only a row is added; a column is not added one cell at a time');
-            if (byKey.has(s[0])) return refuse('edit-target-exists', `a row whose first cell is ${JSON.stringify(s[0])} is already there`);
+            if (byKey.has(s[0])) return refuse('edit-target-exists', `a row whose key cell is ${JSON.stringify(s[0])} is already there`);
             if (!(value instanceof Map)) return refuse('edit-unrepresentable', 'a row is a Map from header to string');
-            if (value.has(columns[0]) && value.get(columns[0]) !== s[0]) return refuse('edit-read-back', `the row's first cell ${JSON.stringify(value.get(columns[0]))} is not its path ${JSON.stringify(s[0])}`);
-            const out = rowBytes(new Map([[columns[0], s[0]], ...value]));
+            if (value.has(columns[k]) && value.get(columns[k]) !== s[0]) return refuse('edit-read-back', `the row's key cell ${JSON.stringify(value.get(columns[k]))} is not its path ${JSON.stringify(s[0])}`);
+            const out = rowBytes(new Map([[columns[k], s[0]], ...value]));
             if (out.ok === false) return out;
             const last = records.at(-1);
             return last.end > last.to ? splice(text.length, text.length, out + eol) : splice(text.length, text.length, eol + out);
@@ -169,7 +173,7 @@ export function csvWriter({ claims = (location) => /\.csv$/i.test(location), del
             if (typeof operation.value !== 'string') return no('a cell holds a string');
             return { inside: true, ok: true, value: new Map([...staged.value, [b[1], operation.value]]) };
           },
-          // Rows are named by their first cell and columns by their header: nothing along a path is a position, so no later version shifts one.
+          // Rows are named by their key cell and columns by their header: nothing along a path is a position, so no later version shifts one.
           shifted() { return false; },
           remove(path) {
             const t = find(path);
