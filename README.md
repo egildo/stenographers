@@ -8,6 +8,8 @@ Writers that write an edited value back over its old bytes, in the author's styl
 - [`@stenographers/markdown`](packages/markdown): the Markdown stenographer, Provenance's Markdown writer by shape.
 - [`@stenographers/html`](packages/html): the HTML stenographer at the grain of blocks, Provenance's HTML writer by
   shape.
+- [`@stenographers/csv`](packages/csv): the CSV stenographer, Provenance's CSV writer by shape: a cell or a row over
+  its old bytes.
 
 ## Planned
 

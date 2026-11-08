@@ -1,0 +1,29 @@
+{
+  "name": "@stenographers/csv",
+  "version": "0.1.0",
+  "description": "Write an edited cell, row or column of a CSV file back over its old bytes, and touch nothing else: a cell keeps its quotes, a row keeps its order, the file keeps its line ends. A writer for Provenance, by shape.",
+  "type": "module",
+  "exports": {
+    "./writer": "./src/writer.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@stenographers/stenography": "0.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://codeberg.org/egildo/stenographers.git",
+    "directory": "packages/csv"
+  },
+  "author": "Egildo Tagliareni",
+  "license": "MIT",
+  "homepage": "https://codeberg.org/egildo/stenographers",
+  "bugs": "https://codeberg.org/egildo/stenographers/issues"
+}
