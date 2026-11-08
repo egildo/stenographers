@@ -156,6 +156,19 @@ export function csvWriter({ claims = (location) => /\.csv$/i.test(location) } = 
             const last = records.at(-1);
             return last.end > last.to ? splice(text.length, text.length, out + eol) : splice(text.length, text.length, eol + out);
           },
+          // An operation applied inside a row a caller has staged: a cell set in its Map. A row's cells are its header's, so none is added or removed; a column outside the header has no cell.
+          amend(staged, operation) {
+            const a = steps(staged.path), b = steps(operation.path);
+            if (a === undefined || b === undefined || a.length !== 1 || b.length !== 2 || b[0] !== a[0]) return { inside: false };
+            const no = (reason) => ({ inside: true, ok: false, reason });
+            if (!(staged.value instanceof Map)) return no('a row is a Map from header to string');
+            if (!columns.includes(b[1])) return no(`no column ${JSON.stringify(b[1])} in the header`);
+            if (operation.op !== 'set') return no(operation.op === 'add' ? 'a row has every cell of the header already; set it' : 'a cell is emptied, not removed');
+            if (typeof operation.value !== 'string') return no('a cell holds a string');
+            return { inside: true, ok: true, value: new Map([...staged.value, [b[1], operation.value]]) };
+          },
+          // Rows are named by their first cell and columns by their header: nothing along a path is a position, so no later version shifts one.
+          shifted() { return false; },
           remove(path) {
             const t = find(path);
             if (t.ok === false) return t;

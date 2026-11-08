@@ -14,7 +14,8 @@ npm install @stenographers/csv
 
 One entry, `@stenographers/csv/writer`:
 
-- `csvWriter()`: Provenance's CSV writer, by shape (`claims`, `open` giving `locate`, `write`, `add` and `remove`).
+- `csvWriter()`: Provenance's CSV writer, by shape (`claims`, `open` giving `locate`, `write`, and all four features:
+  `add`, `remove`, `amend` and `shifted`).
 - `table(text)`: the file's records, each its span, its cells' spans and values, the reading the writer itself
   uses, so a caller pairs its values with the same bytes.
 - `format(value, wasQuoted)`: a cell's bytes for a value.
@@ -32,6 +33,12 @@ the first, which is the row's address and stays unless the Map names a new one. 
 `add` at `/<row>` appends a row at the end, in the header's order (the first cell is the path, or the Map's first
 cell when they agree); `remove` at `/<row>` takes the row and its line ending. A column is not added, removed or
 written whole: that is a later version, when a register grows a field.
+
+**Amend and shifted.** `amend` applies an operation inside a row a caller has staged: a `set` at one of its cells
+answers the row's Map with that cell changed; an `add` or `remove` of a cell, a column the header lacks, or a value
+that is not a string is refused inside; a path not below the staged row is not inside. `shifted` answers false:
+rows are named by their first cell and columns by their header, so nothing along a path is a position that a later
+version could move.
 
 **Style.** A cell is quoted when its value holds a comma, a quote, a line break or an outer space, or when its old
 bytes were quoted; otherwise bare. The line ending is the file's first break. Nothing else in the file is touched.

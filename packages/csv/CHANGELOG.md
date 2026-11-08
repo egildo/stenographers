@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 — 2026-11-08
+
+- **All four features.** `amend` applies a cell set inside a row a caller has staged, answering the row's new Map;
+  a cell added or removed, a column the header lacks, or a value that is not a string is refused inside. `shifted`
+  answers false: rows are named by their first cell and columns by their header, so nothing along a path is a
+  position.
+
 ## 0.1.0 — 2026-11-08
 
 - **First version.** Provenance's CSV writer, by shape: a path names a row by its first cell and a cell by the

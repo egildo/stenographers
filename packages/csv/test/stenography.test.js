@@ -29,7 +29,7 @@ function read(bytes) {
 
 run({
   writer: csvWriter(),
-  features: ['add', 'remove'],
+  features: ['add', 'remove', 'amend', 'shifted'],
   corpus: fs.readdirSync(dir).filter((f) => f.endsWith('.csv')).sort().map((f) => fs.readFileSync(path.join(dir, f))),
   read,
   edits(bytes) {

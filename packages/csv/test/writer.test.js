@@ -91,3 +91,22 @@ test('locate: a row is its bytes without the line ending, a cell its raw bytes w
   const root = doc.locate('');
   assert.deepEqual([root.start, root.end], [0, bytes.length]);
 });
+
+test('amend: a cell set inside a staged row changes its Map; what is not below it, or not a cell, is not inside', () => {
+  const doc = csvWriter().open(bytesOf('bare.csv')).document;
+  const staged = { path: '/a', value: new Map([['Name', 'a'], ['Value', '1']]) };
+  assert.deepEqual(doc.amend(staged, { op: 'set', path: '/a/Value', value: '9' }), { inside: true, ok: true, value: new Map([['Name', 'a'], ['Value', '9']]) });
+  assert.deepEqual(staged.value, new Map([['Name', 'a'], ['Value', '1']]), 'the staged value is left as it was');
+  assert.deepEqual(doc.amend(staged, { op: 'set', path: '/b/Value', value: '9' }), { inside: false });
+  assert.deepEqual(doc.amend({ path: '/a/Value', value: '1' }, { op: 'set', path: '/a/Value/x', value: '9' }), { inside: false });
+  assert.equal(doc.amend(staged, { op: 'set', path: '/a/Colour', value: 'red' }).ok, false);
+  assert.equal(doc.amend(staged, { op: 'add', path: '/a/Value', value: '9' }).ok, false);
+  assert.equal(doc.amend(staged, { op: 'remove', path: '/a/Value' }).ok, false);
+  assert.equal(doc.amend(staged, { op: 'set', path: '/a/Value', value: 9 }).ok, false);
+});
+
+test('shifted: a row named by its first cell never shifts', () => {
+  const doc = csvWriter().open(bytesOf('bare.csv')).document;
+  const newer = csvWriter().open(new TextEncoder().encode('Name,Value\nz,0\na,1\nb,2\n')).document;
+  assert.equal(doc.shifted('/b/Value', newer), false);
+});

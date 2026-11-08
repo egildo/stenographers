@@ -1,6 +1,6 @@
 {
   "name": "@stenographers/csv",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Write an edited cell, row or column of a CSV file back over its old bytes, and touch nothing else: a cell keeps its quotes, a row keeps its order, the file keeps its line ends. A writer for Provenance, by shape.",
   "type": "module",
   "exports": {
