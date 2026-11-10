@@ -10,6 +10,8 @@ Writers that write an edited value back over its old bytes, in the author's styl
   shape.
 - [`@stenographers/csv`](packages/csv): the CSV stenographer, Provenance's CSV writer by shape: a cell or a row over
   its old bytes.
+- [`@stenographers/step`](packages/step): the STEP stenographer, for the text an IFC file is written in: one value
+  over its old bytes, spelled as IfcOpenShell spells it.
 
 ## Planned
 

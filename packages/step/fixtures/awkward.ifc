@@ -1,0 +1,21 @@
+ISO-10303-21;
+HEADER;
+/* by hand: a header that says DATA; in a comment and in a string */
+FILE_DESCRIPTION(('not DATA; yet'),'2;1');
+FILE_NAME('awkward.ifc','2026-11-10T00:00:00',(''),(''),'by hand','by hand','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1 = IFCCARTESIANPOINT ( ( 1.0 , 0.1 , -2.5E0 ) ) ;
+/* a comment between two instances */
+#2=IFCDIRECTION((0.,0.,1.)); #3=IFCDIRECTION((1.,0.,0.));
+#4=IFCWALL('0dvG5wTAbTIfnsSIIejNpf',$,
+  'Muro; con ) dentro' /* its name */,
+  'caff\X\E8 e t\S\h',$,#1,$,'W-01',.SOLIDWALL.);
+#5=(IFCLENGTHMEASURE(1.)IFCPOSITIVELENGTHMEASURE(1.));
+#6=IFCPIXELTEXTURE(2,2,3,.T.,.F.,'RGB',$,$,("0FF0","1A"));
+#7=IFCPROPERTYSINGLEVALUE('Spaced',$,IFCLABEL ( 'x' ),$);
+#8=IFCPROPERTYENUMERATEDVALUE('None',$,(),$);
+#10=IFCPROPERTYSINGLEVALUE('Count',$,IFCINTEGER(+3),$);
+ENDSEC;
+END-ISO-10303-21;
